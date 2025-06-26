@@ -4,14 +4,42 @@ const { GoogleSearch } = GoogleGenerativeAI;
 // --- AI INITIALIZATION ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// --- CORRECTED SEARCH TOOL INITIALIZATION ---
-// The GoogleSearch tool is initialized with an object containing two keys:
-// 1. apiKey: Your main API key for authentication.
-// 2. cx: Your Search Engine ID to specify WHICH search engine to use.
-const googleSearch = new GoogleSearch({
-  apiKey: process.env.GEMINI_API_KEY,
-  cx: process.env.SEARCH_ENGINE_ID,
+// --- AI INITIALIZATION ---
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// The model is initialized with the gemini-1.5-pro model and the search tool configuration.
+const model = genAI.getGenerativeModel({
+  model: 'gemini-1.5-pro',
+  tools: [{
+    function_declarations: [
+      {
+        name: "Google Search",
+        description: "Search the web using google search",
+        parameters: {
+          type: "object",
+          properties: {
+            query: {
+              type: "string",
+              description: "The query to run against google search",
+            },
+          },
+          required: ["query"],
+        },
+      },
+    ],
+    tool_code: googleSearchToolCode, // We'll define this function below
+  }],
 });
+
+// Define the tool code for Google Search
+async function googleSearchToolCode(tool_input) {
+  const googleSearch = new GoogleSearch({
+    apiKey: process.env.GEMINI_API_KEY,
+    cx: process.env.SEARCH_ENGINE_ID,
+  });
+  const result = await googleSearch.search(tool_input);
+  return result;
+}
 
 // The model is given the now correctly configured search tool.
 const model = genAI.getGenerativeModel({

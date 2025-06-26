@@ -11,7 +11,25 @@ const model = genAI.getGenerativeModel({
   tools: [{
     function_declarations: [
       {
-        name: "Google Search",
+        name: "tools: [{
+  function_declarations: [
+    {
+      name: "search_the_web",
+      description: "Search the web using google search",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "The query to run against google search",
+          },
+        },
+        required: ["query"],
+      },
+    },
+  ],
+  tool_code: googleSearchToolCode, // Keep this as it is
+}],",
         description: "Search the web using google search",
         parameters: {
           type: "object",

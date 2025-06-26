@@ -4,32 +4,13 @@ const { GoogleSearch } = GoogleGenerativeAI;
 // --- AI INITIALIZATION ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-
 // The model is initialized with the gemini-1.5-pro model and the search tool configuration.
 const model = genAI.getGenerativeModel({
   model: 'gemini-1.5-pro',
   tools: [{
     function_declarations: [
       {
-        name: "tools: [{
-  function_declarations: [
-    {
-      name: "search_the_web",
-      description: "Search the web using google search",
-      parameters: {
-        type: "object",
-        properties: {
-          query: {
-            type: "string",
-            description: "The query to run against google search",
-          },
-        },
-        required: ["query"],
-      },
-    },
-  ],
-  tool_code: googleSearchToolCode, // Keep this as it is
-}],",
+        name: "search_the_web",
         description: "Search the web using google search",
         parameters: {
           type: "object",
@@ -43,7 +24,7 @@ const model = genAI.getGenerativeModel({
         },
       },
     ],
-    tool_code: googleSearchToolCode, // We'll define this function below
+    tool_code: googleSearchToolCode,
   }],
 });
 
@@ -57,12 +38,7 @@ async function googleSearchToolCode(tool_input) {
   return result;
 }
 
-
-
-
 exports.handler = async (event) => {
-  // The rest of the handler function is the same as before.
-  // ... (no changes needed below this line) ...
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }

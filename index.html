@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Curriculum Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .spinner { border-top-color: #3b82f6; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .prose h1, .prose h2, .prose h3 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; }
+        .prose h1 { font-size: 1.875rem; }
+        .prose h2 { font-size: 1.5rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem; }
+        .prose h3 { font-size: 1.25rem; }
+        .prose p { margin-bottom: 1em; line-height: 1.6; }
+        .prose ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 1em; }
+        .prose li { margin-bottom: 0.5em; }
+        .prose a { color: #3b82f6; text-decoration: none; }
+        .prose a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">Dynamic AI Curriculum Generator</h1>
+            <p class="mt-2 text-md sm:text-lg text-gray-600">Enter any job title to generate a personalized learning path using real-time job market data.</p>
+        </header>
+
+        <div id="inputSection" class="bg-white p-6 rounded-xl shadow-lg mb-8">
+            <div class="flex flex-col sm:flex-row gap-4">
+                <input type="text" id="jobTitleInput" placeholder="e.g., AI Prompt Engineer, Data Analyst..." class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                <button id="generateBtn" class="bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-700 transition shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Generate Curriculum
+                </button>
+            </div>
+        </div>
+        
+        <div id="errorBox" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-6" role="alert"></div>
+        <div id="progressSection" class="hidden bg-white p-6 rounded-xl shadow-lg mb-8"></div>
+
+        <div id="resultSection" class="hidden bg-white p-6 sm:p-8 rounded-xl shadow-lg">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="resultTitle" class="text-2xl sm:text-3xl font-bold text-gray-900"></h2>
+                <button id="copyBtn" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition">Copy</button>
+            </div>
+            <div id="syllabusOutput" class="prose max-w-none"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // All the element selections and UI update functions (like updateStepUI, showError, etc.)
+            // would be here, same as in the previous version. For brevity, they are omitted,
+            // but the full HTML from before should be used.
+            const jobTitleInput = document.getElementById('jobTitleInput');
+            const generateBtn = document.getElementById('generateBtn');
+
+            const generateCurriculum = async () => {
+                const jobTitle = jobTitleInput.value.trim();
+                if (!jobTitle) { return; }
+
+                // --- FUNCTION CALL EXPLANATION ---
+                // This is the primary function call from the frontend.
+                // Its only job is to send the user's input (the jobTitle) to our secure backend function.
+                // The AI search and analysis does NOT happen here in the browser.
+                try {
+                    const response = await fetch('/.netlify/functions/generateCurriculum', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ jobTitle: jobTitle })
+                    });
+
+                    if (!response.ok) {
+                        // Handle errors from the server
+                        const errorData = await response.json();
+                        throw new Error(errorData.error);
+                    }
+
+                    const data = await response.json();
+                    
+                    // The 'data.curriculum' now holds the final Markdown from our AI.
+                    // We can now display it to the user.
+                    // (Code to update the UI would go here)
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    // (Code to show error to the user)
+                }
+            };
+
+            generateBtn.addEventListener('click', generateCurriculum);
+            // The rest of your UI JavaScript (event listeners, etc.)
+        });
+    </script>
+</body>
+</html>

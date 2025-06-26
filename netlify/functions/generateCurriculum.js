@@ -39,11 +39,7 @@ async function googleSearchToolCode(tool_input) {
   return result;
 }
 
-// The model is given the now correctly configured search tool.
-const model = genAI.getGenerativeModel({
-  model: 'gemini-1.5-pro',
-  tools: {googleSearch},
-});
+
 
 
 exports.handler = async (event) => {

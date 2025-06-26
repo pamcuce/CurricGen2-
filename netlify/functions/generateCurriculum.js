@@ -1,5 +1,6 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { GoogleSearch } = require('@google/generative-ai/google-search');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { GoogleSearch } = GoogleGenerativeAI;
 
 // --- AI INITIALIZATION ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);

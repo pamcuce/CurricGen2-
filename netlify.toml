@@ -1,8 +1,13 @@
-# This tells Netlify which folder contains your public-facing website.
+# Main build settings
 [build]
+  # This is the command Netlify runs to install dependencies.
+  command = "npm install"
+  # The folder with your public-facing website.
   publish = "public"
+  # The folder where your backend functions are located.
+  functions = "netlify/functions"
 
-# This configures your backend serverless functions.
-[functions]
-  directory = "netlify/functions"
-  node_version = "18" # Required Node.js version for the Google AI SDK
+# Environment settings for the build
+[build.environment]
+  # Sets the required Node.js version for the Google AI SDK.
+  NODE_VERSION = "18"

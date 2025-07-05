@@ -1,14 +1,13 @@
 # Main build settings
 [build]
+  # This is the command Netlify runs to install dependencies.
   command = "npm install"
+  # The folder with your public-facing website.
   publish = "public"
+  # The folder where your backend functions are located.
   functions = "netlify/functions"
 
 # Environment settings for the build
 [build.environment]
+  # Sets the required Node.js version for the Google AI SDK.
   NODE_VERSION = "18"
-
-# Configuration for your serverless functions
-[functions]
-  # This increases the timeout from 10 seconds to 25 seconds.
-  timeout = 25

@@ -1,8 +1,8 @@
-# This tells Netlify where to find your backend serverless functions.
-[functions]
-  directory = "netlify/functions"
-  node_version = "18" # Required Node.js version for the Google AI SDK
-
 # This tells Netlify which folder contains your public-facing website.
 [build]
   publish = "public"
+
+# This configures your backend serverless functions.
+[functions]
+  directory = "netlify/functions"
+  node_version = "18" # Required Node.js version for the Google AI SDK

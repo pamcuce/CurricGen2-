@@ -1,42 +1,20 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { GoogleSearch } = GoogleGenerativeAI;
+
+// NOTE: The GoogleSearch tool is currently in a pre-release state in the Node.js SDK.
+// The implementation details may change. This code is based on current documentation.
+// For this tool to work, you MUST enable the "Google Search" tool in your Google AI Studio project.
+const { GoogleSearch } = require("@google/generative-ai/server");
 
 // --- AI INITIALIZATION ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// The model is initialized with the gemini-1.5-pro model and the search tool configuration.
+// The model is initialized with the gemini-2.0-flash model and the search tool.
 const model = genAI.getGenerativeModel({
+  // The model name has been updated specifically to gemini-2.0-flash as requested.
   model: 'gemini-2.0-flash',
-  tools: [{
-    function_declarations: [
-      {
-        name: "search_the_web",
-        description: "Search the web using google search",
-        parameters: {
-          type: "object",
-          properties: {
-            query: {
-              type: "string",
-              description: "The query to run against google search",
-            },
-          },
-          required: ["query"],
-        },
-      },
-    ],
-    tool_code: googleSearchToolCode,
-  }],
+  tools: [new GoogleSearch({apiKey: process.env.GOOGLE_API_KEY})],
 });
 
-// Define the tool code for Google Search
-async function googleSearchToolCode(tool_input) {
-  const googleSearch = new GoogleSearch({
-    apiKey: process.env.GEMINI_API_KEY,
-    cx: process.env.SEARCH_ENGINE_ID,
-  });
-  const result = await googleSearch.search(tool_input);
-  return result;
-}
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -68,8 +46,12 @@ exports.handler = async (event) => {
 
       Format the entire output as a single, clean Markdown document.
     `;
-
+    
+    // The 'includeThinking' or 'includeToolCallingTokens' parameter is used for streaming responses 
+    // with generateContentStream() to show the model's internal tool-use reasoning. 
+    // Since this function uses a non-streaming call with generateContent(), that parameter is not applicable here.
     const result = await model.generateContent(prompt);
+    
     const response = await result.response;
     const curriculumMarkdown = response.text();
 

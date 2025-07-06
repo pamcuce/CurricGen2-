@@ -34,7 +34,7 @@
 
         <div id="inputSection" class="bg-white p-6 rounded-xl shadow-lg mb-8">
             <div class="flex flex-col sm:flex-row gap-4">
-                <input type="text" id="jobTitleInput" placeholder="e.g., AI Prompt Engineer, Middle School Teacher..." class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                <input type="text" id="jobTitleInput" placeholder="e.g., AI Prompt Engineer, Data Analyst..." class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
                 <button id="generateBtn" class="bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-700 transition shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                     Generate Curriculum
                 </button>
@@ -184,11 +184,13 @@
                 generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
 
                 try {
+                    // Step 1: Get Competencies
                     updateStepUI(1, 'loading');
                     const competenciesData = await callApi('1-get-competencies', { jobTitle: currentJobTitle });
                     currentCompetencies = competenciesData.competencies;
                     updateStepUI(1, 'success');
 
+                    // Step 2: Get Structure
                     updateStepUI(2, 'loading');
                     const modules = [];
                     for (const competency of currentCompetencies) {
@@ -197,24 +199,32 @@
                     }
                     updateStepUI(2, 'success');
 
+                    // Step 3: Get Resources for each module
                     updateStepUI(3, 'loading');
                     const populatedModules = [];
                     for (const module of modules) {
-                        const resourcesData = await callApi('3-get-resources', { module });
-                        populatedModules.push({ ...module, resources: resourcesData.resources });
+                        const resources = [];
+                        for (let i = 0; i < 3; i++) { // Get 3 resources per module
+                            const { resource } = await callApi('3-get-one-resource', { module, existingResources: resources });
+                            resources.push(resource);
+                        }
+                        populatedModules.push({ ...module, resources });
                     }
                     updateStepUI(3, 'success');
 
                     const fullCurriculum = { modules: populatedModules };
 
+                    // Step 4: Get Capstone
                     updateStepUI(4, 'loading');
                     const capstone = await callApi('4-get-capstone', { jobTitle: currentJobTitle, moduleTitles: modules.map(m => m.title) });
                     updateStepUI(4, 'success');
 
+                    // Step 5: Format Final Output
                     updateStepUI(5, 'loading');
                     const { curriculum } = await callApi('5-format-output', { jobTitle: currentJobTitle, fullCurriculum: { ...fullCurriculum, capstone } });
                     updateStepUI(5, 'success');
 
+                    // Display final result
                     resultTitle.textContent = `Learning Path: ${currentJobTitle}`;
                     syllabusOutput.innerHTML = marked.parse(curriculum);
                     addFeatureButtons();

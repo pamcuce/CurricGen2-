@@ -25,7 +25,6 @@
 </head>
 <body class="bg-gray-50 text-gray-800">
     <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
-        <!-- Your header and input form HTML remains the same -->
         <header class="text-center mb-8">
             <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">Dynamic AI Curriculum Generator</h1>
             <p class="mt-2 text-md sm:text-lg text-gray-600">Enter any job title to generate a personalized learning path using real-time job market data.</p>
@@ -63,9 +62,8 @@
         </div>
     </div>
 
-    <!-- ============================================================================== -->
-    <!--  UPDATED JAVASCRIPT WITH ROBUST ERROR HANDLING                             -->
-    <!-- ============================================================================== -->
+    <!-- We will use the 'marked' library to convert Markdown to HTML -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const jobTitleInput = document.getElementById('jobTitleInput');
@@ -116,47 +114,43 @@
 
             const hideError = () => errorBox.classList.add('hidden');
             
-            const parseAndRenderMarkdown = (markdownText) => {
-                let html = markdownText
-                    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-                    .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-                    .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-                    .replace(/^\* (.*$)/gim, '<ul><li>$1</li></ul>')
-                    .replace(/<\/ul>\n<ul>/gim, '')
-                    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">$1</a>')
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/\n/g, '<br>');
-                
-                html = html.replace(/<br><ul>/g, '<ul>').replace(/<\/ul><br>/g, '</ul>').replace(/<\/li><br>/g, '</li>');
-                return html;
-            };
-            
-            const handleStream = async (reader, decoder) => {
+            // THIS IS THE FIX: A robust stream parser.
+            const handleStream = async (response) => {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
                 while (true) {
                     const { value, done } = await reader.read();
                     if (done) break;
 
-                    const chunk = decoder.decode(value, { stream: true });
-                    const lines = chunk.split('\n\n').filter(line => line.startsWith('data: '));
+                    buffer += decoder.decode(value, { stream: true });
+                    
+                    // Process any complete messages in the buffer
+                    let boundary = buffer.indexOf('\n\n');
+                    while (boundary !== -1) {
+                        const message = buffer.substring(0, boundary);
+                        buffer = buffer.substring(boundary + 2);
 
-                    for (const line of lines) {
-                        const jsonString = line.replace('data: ', '');
-                        try {
-                            const event = JSON.parse(jsonString);
-                            if (event.type === 'progress') {
-                                updateStepUI(event.step, event.status);
-                            } else if (event.type === 'final') {
-                                resultTitle.textContent = `Learning Path: ${jobTitleInput.value.trim()}`;
-                                syllabusOutput.innerHTML = parseAndRenderMarkdown(event.curriculum);
-                                resultSection.classList.remove('hidden');
-                            } else if (event.type === 'error') {
-                                throw new Error(event.message);
+                        if (message.startsWith('data: ')) {
+                            const jsonString = message.substring(6);
+                            try {
+                                const event = JSON.parse(jsonString);
+                                if (event.type === 'progress') {
+                                    updateStepUI(event.step, event.status);
+                                } else if (event.type === 'final') {
+                                    resultTitle.textContent = `Learning Path: ${jobTitleInput.value.trim()}`;
+                                    // Use marked.js for proper markdown rendering
+                                    syllabusOutput.innerHTML = marked.parse(event.curriculum);
+                                    resultSection.classList.remove('hidden');
+                                } else if (event.type === 'error') {
+                                    throw new Error(event.message);
+                                }
+                            } catch (e) {
+                                console.error("Failed to parse stream chunk:", jsonString, e);
                             }
-                        } catch (e) {
-                            console.error("Failed to parse stream chunk:", jsonString, e);
-                            // This catch block handles malformed JSON from the stream
-                            throw new Error("Received a malformed data event from the server.");
                         }
+                        boundary = buffer.indexOf('\n\n');
                     }
                 }
             };
@@ -182,17 +176,12 @@
                         body: JSON.stringify({ jobTitle: jobTitle })
                     });
 
-                    // THIS IS THE FIX:
-                    // If the response is not ok, we read the body as plain text
-                    // which is safe and won't cause a JSON parsing error.
                     if (!response.ok) {
                         const errorText = await response.text();
                         throw new Error(errorText || 'The server responded with an error.');
                     }
                     
-                    const reader = response.body.getReader();
-                    const decoder = new TextDecoder();
-                    await handleStream(reader, decoder);
+                    await handleStream(response);
 
                 } catch (error) {
                     console.error(error);
@@ -200,6 +189,7 @@
                 } finally {
                     generateBtn.disabled = false;
                     generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    // Hide progress if no result was shown (e.g., on error)
                     if (resultSection.classList.contains('hidden')) {
                          progressSection.classList.add('hidden');
                     }
@@ -207,6 +197,7 @@
             };
             
             const copyToClipboard = () => {
+                // Use the raw markdown for copying if available, otherwise innerText
                 const textToCopy = syllabusOutput.innerText;
                 navigator.clipboard.writeText(textToCopy).then(() => {
                     copyBtn.textContent = 'Copied!';

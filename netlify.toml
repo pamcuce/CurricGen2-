@@ -4,7 +4,7 @@
   command = "npm install"
   # The folder with your public-facing website.
   publish = "public"
-  # The folder where your backend functions are located.
+  # This sets the folder where your backend functions are located.
   functions = "netlify/functions"
 
 # Environment settings for the build
@@ -12,7 +12,7 @@
   # Sets the required Node.js version for the Google AI SDK.
   NODE_VERSION = "18"
 
-# Function-specific settings
-[functions]
-  # Increase the timeout for all functions to 30 seconds.
+# This block applies settings to ALL functions in the directory.
+# This is the correct way to set the timeout.
+[functions."*"]
   timeout = 30

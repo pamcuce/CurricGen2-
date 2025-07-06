@@ -32,7 +32,7 @@ const searchTheWeb = {
       })) || [];
       
       console.log(`[Search Tool] Found ${searchResults.length} results.`);
-      return { results: searchResults.slice(0, 5) }; // Return top 5 results
+      return { results: searchResults.slice(0, 5) };
     } catch (error) {
       console.error("[Search Tool] Error:", error);
       return { error: "Failed to fetch search results." };
@@ -42,7 +42,7 @@ const searchTheWeb = {
 
 // --- MODEL INITIALIZATION WITH MANUAL TOOL ---
 const model = genAI.getGenerativeModel({
-  model: 'gemini-2.5-flash-lite-preview-06-17',
+  model: 'gemini-2.5-flash',
   tools: [{
     function_declarations: [
       {
@@ -63,6 +63,38 @@ const model = genAI.getGenerativeModel({
   }],
 });
 
+// --- FINAL FORMATTING FUNCTION (in JavaScript) ---
+function formatCurriculumToMarkdown(data, jobTitle) {
+    let markdown = `# Learning Path: ${jobTitle}\n\n`;
+    markdown += `Here is a comprehensive learning path to become a ${jobTitle}, created with real-time job market data.\n\n`;
+
+    data.modules.forEach(module => {
+        markdown += `## ${module.title}\n`;
+        markdown += `${module.objectives}\n\n`;
+        markdown += `### Key Resources\n`;
+        if (module.resources && module.resources.length > 0) {
+            module.resources.forEach(resource => {
+                markdown += `* **[${resource.title}](${resource.url})**: ${resource.summary}\n`;
+            });
+        } else {
+            markdown += `* No specific resources found for this module.\n`;
+        }
+        markdown += `\n`;
+    });
+
+    if (data.capstone) {
+        markdown += `## Capstone Project: ${data.capstone.title}\n`;
+        markdown += `${data.capstone.description}\n\n`;
+        markdown += `### Key Deliverables\n`;
+        data.capstone.keyDeliverables.forEach(deliverable => {
+            markdown += `* ${deliverable}\n`;
+        });
+    }
+
+    return markdown;
+}
+
+
 // --- MAIN HANDLER ---
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -75,18 +107,17 @@ exports.handler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: 'Job title is required.' }) };
     }
 
+    // THIS IS THE NEW, MORE RELIABLE PROMPT
     const prompt = `
-      You are an expert career counselor and curriculum designer. A user wants to train to become a "${jobTitle}".
-
-      Your task is to generate a comprehensive, structured learning curriculum. To do this, you MUST use your search_the_web tool to gather real-time data. Follow these steps precisely:
-
-      1.  **Perform Real-Time Research:** Use your search_the_web tool to find the most current information on the role of a "${jobTitle}". Your research MUST include skills, tools, and technologies from recent job postings, and topics from online courses.
-      2.  **Synthesize Findings:** Based ONLY on the results of your research, identify the core technical skills, soft skills, and essential knowledge areas.
-      3.  **Structure Modules:** Organize these findings into a logical sequence of progressive modules.
-      4.  **Find Free Resources:** For EACH key skill or tool within a module, use your search_the_web tool again to find a specific, high-quality, FREE online resource (like a specific tutorial, documentation page, or video series). Provide a direct, clickable link.
-      5.  **Add a Capstone Project:** Conclude with a relevant capstone project idea.
-
-      Format the entire output as a single, clean Markdown document. Do not ask for permission to use the tool; just use it as needed.
+      You are an expert career research agent. A user wants to become a "${jobTitle}".
+      Your task is to use your search_the_web tool to gather real-time data and structure a learning plan.
+      
+      Follow these steps precisely:
+      1.  **Research & Synthesize:** Use your search tool to research the skills, tools, and topics for a "${jobTitle}". Synthesize these findings into a list of core competencies.
+      2.  **Structure Modules:** Based on your research, define a logical sequence of learning modules.
+      3.  **Find Resources:** For each module, use your search tool again to find 3-5 specific, high-quality, FREE online resources.
+      4.  **Design Capstone:** Design a relevant capstone project.
+      5.  **Final Output:** Return a single, final JSON object containing all the structured data you have gathered. The JSON object should have a "modules" key (an array of objects, each with "title", "objectives", and a "resources" array) and a "capstone" key (an object with "title", "description", and "keyDeliverables"). Do not output this information as Markdown. Output it as a single JSON object only.
     `;
 
     const chat = model.startChat();
@@ -99,10 +130,7 @@ exports.handler = async (event) => {
         calls.map(async (call) => {
           if (call.name === 'search_the_web') {
             const tool_response = await searchTheWeb.function(call.args);
-            return {
-              name: call.name,
-              response: tool_response,
-            };
+            return { name: call.name, response: tool_response };
           }
         })
       );
@@ -110,13 +138,16 @@ exports.handler = async (event) => {
       result = await chat.sendMessage(JSON.stringify(tool_responses.filter(Boolean)));
     }
 
-    const curriculumMarkdown = result.response.text();
-
-    // THIS IS THE FIX:
-    // We now explicitly check if the final response is empty and throw an error if it is.
-    if (!curriculumMarkdown || curriculumMarkdown.trim() === "") {
-        throw new Error("The AI model generated an empty curriculum. This may be due to a content safety filter or an internal model error. Please try a different job title.");
+    const responseText = result.response.text();
+    if (!responseText) {
+        throw new Error("The AI model returned an empty data object.");
     }
+
+    // The AI now returns JSON, not Markdown
+    const curriculumData = JSON.parse(responseText);
+
+    // The formatting is now done reliably in JavaScript
+    const curriculumMarkdown = formatCurriculumToMarkdown(curriculumData, jobTitle);
 
     return {
       statusCode: 200,

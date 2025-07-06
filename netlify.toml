@@ -1,7 +1,6 @@
-# This tells Netlify that your main page (index.html) is in the root.
 [build]
-  publish = "."
-  functions = "netlify/functions"
+  publish = "public"
 
-[build.environment]
-  NODE_VERSION = "18"
+[[edge_functions]]
+  path = "/generate-curriculum"
+  function = "generate-curriculum"

@@ -15,9 +15,7 @@ exports.handler = async (event) => {
       throw new Error("The AI model returned an empty response. This might be due to a content safety filter.");
     }
     
-    // Validate that the response is valid JSON before sending
     JSON.parse(responseText);
-
     return { statusCode: 200, body: responseText };
   } catch (error) {
     console.error("Error in 1-get-competencies:", error);

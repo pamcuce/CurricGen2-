@@ -4,6 +4,7 @@ const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', generationCo
 
 exports.handler = async (event) => {
   try {
+    if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
     const { module } = JSON.parse(event.body);
     const prompt = `For a learning module titled "${module.title}", find one specific, high-quality, and FREE online educational resource. Return a JSON object with a single key "resource", which is an object with "title", "summary", and "url" keys.`;
     
@@ -14,9 +15,10 @@ exports.handler = async (event) => {
         throw new Error("The AI model returned an empty response while searching for a resource.");
     }
 
+    JSON.parse(responseText);
     return { statusCode: 200, body: responseText };
   } catch (error) {
     console.error("Error in 3-get-one-resource:", error);
-    return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+    return { statusCode: 500, body: JSON.stringify({ error: `Function 3 (get-one-resource) failed: ${error.message}` }) };
   }
 };

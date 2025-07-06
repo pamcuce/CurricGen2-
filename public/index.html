@@ -8,19 +8,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .step-icon { transition: all 0.3s ease-in-out; }
+        .step-icon, .elaborate-btn { transition: all 0.3s ease-in-out; }
         .step-text { transition: all 0.3s ease-in-out; }
         .spinner { border-top-color: #3b82f6; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .prose h1, .prose h2, .prose h3 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; }
+        .prose h1, .prose h2, .prose h3, .prose h4 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; }
         .prose h1 { font-size: 1.875rem; }
         .prose h2 { font-size: 1.5rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem; }
         .prose h3 { font-size: 1.25rem; }
+        .prose h4 { font-size: 1.1rem; color: #4f46e5; }
         .prose p { margin-bottom: 1em; line-height: 1.6; }
-        .prose ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 1em; }
+        .prose ul, .prose ol { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 1em; }
         .prose li { margin-bottom: 0.5em; }
         .prose a { color: #3b82f6; text-decoration: none; }
         .prose a:hover { text-decoration: underline; }
+        .modal-overlay { background-color: rgba(0, 0, 0, 0.5); }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -56,17 +58,34 @@
         </div>
 
         <div id="resultSection" class="hidden bg-white p-6 sm:p-8 rounded-xl shadow-lg">
-             <div class="flex justify-between items-center mb-6">
+             <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
                  <h2 id="resultTitle" class="text-2xl sm:text-3xl font-bold text-gray-900"></h2>
-                 <button id="copyBtn" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400">Copy</button>
+                 <div class="flex gap-2">
+                    <button id="interviewPrepBtn" class="bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-purple-700 transition shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">✨ Generate Interview Prep Kit</button>
+                    <button id="copyBtn" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400">Copy</button>
+                 </div>
              </div>
              <div id="syllabusOutput" class="prose max-w-none"></div>
+        </div>
+    </div>
+
+    <!-- Modal for Gemini Features -->
+    <div id="featureModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white p-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 id="modalTitle" class="text-xl font-bold text-gray-800"></h3>
+                <button id="closeModalBtn" class="text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
+            </div>
+            <div id="modalContent" class="p-6 prose max-w-none">
+                <!-- Content will be injected here -->
+            </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // --- Element References ---
             const jobTitleInput = document.getElementById('jobTitleInput');
             const generateBtn = document.getElementById('generateBtn');
             const errorBox = document.getElementById('errorBox');
@@ -76,6 +95,15 @@
             const resultTitle = document.getElementById('resultTitle');
             const syllabusOutput = document.getElementById('syllabusOutput');
             const copyBtn = document.getElementById('copyBtn');
+            const interviewPrepBtn = document.getElementById('interviewPrepBtn');
+            const featureModal = document.getElementById('featureModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalContent = document.getElementById('modalContent');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+
+            // --- State ---
+            let currentJobTitle = '';
+            let currentCompetencies = [];
 
             const steps = {
                 1: { icon: document.getElementById('step1_icon'), text: document.getElementById('step1_text') },
@@ -88,6 +116,7 @@
             const spinnerSVG = `<div class="spinner h-5 w-5 rounded-full border-2 border-transparent"></div>`;
             const checkSVG = `<svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>`;
             
+            // --- UI Functions ---
             const updateStepUI = (stepNumber, status) => {
                 const step = steps[stepNumber];
                 if (!step) return;
@@ -117,6 +146,15 @@
 
             const hideError = () => errorBox.classList.add('hidden');
 
+            const showModal = (title, content) => {
+                modalTitle.textContent = title;
+                modalContent.innerHTML = content;
+                featureModal.classList.remove('hidden');
+            };
+
+            const hideModal = () => featureModal.classList.add('hidden');
+            
+            // --- API Call Function ---
             const callApi = async (endpoint, body) => {
                 const response = await fetch(`/.netlify/functions/${endpoint}`, {
                     method: 'POST',
@@ -130,9 +168,10 @@
                 return response.json();
             };
             
+            // --- Main Application Logic ---
             const generateCurriculum = async () => {
-                const jobTitle = jobTitleInput.value.trim();
-                if (!jobTitle) {
+                currentJobTitle = jobTitleInput.value.trim();
+                if (!currentJobTitle) {
                     showError("Please enter a job title.");
                     return;
                 }
@@ -145,48 +184,40 @@
                 generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
 
                 try {
-                    // Step 1: Get Competencies
                     updateStepUI(1, 'loading');
-                    const { competencies } = await callApi('1-get-competencies', { jobTitle });
+                    const competenciesData = await callApi('1-get-competencies', { jobTitle: currentJobTitle });
+                    currentCompetencies = competenciesData.competencies;
                     updateStepUI(1, 'success');
 
-                    // THIS IS THE FIX:
-                    // Instead of one big call, we loop through competencies and build the modules one by one.
                     updateStepUI(2, 'loading');
                     const modules = [];
-                    for (const competency of competencies) {
-                        const moduleData = await callApi('2-get-module-structure', { jobTitle, competency });
+                    for (const competency of currentCompetencies) {
+                        const moduleData = await callApi('2-get-module-structure', { jobTitle: currentJobTitle, competency });
                         modules.push(moduleData);
                     }
                     updateStepUI(2, 'success');
 
-                    // Step 3: Get Resources for each module (sequentially to avoid overloading)
                     updateStepUI(3, 'loading');
                     const populatedModules = [];
                     for (const module of modules) {
                         const resourcesData = await callApi('3-get-resources', { module });
-                        populatedModules.push({
-                            ...module,
-                            resources: resourcesData.resources
-                        });
+                        populatedModules.push({ ...module, resources: resourcesData.resources });
                     }
                     updateStepUI(3, 'success');
 
                     const fullCurriculum = { modules: populatedModules };
 
-                    // Step 4: Get Capstone
                     updateStepUI(4, 'loading');
-                    const capstone = await callApi('4-get-capstone', { jobTitle, moduleTitles: modules.map(m => m.title) });
+                    const capstone = await callApi('4-get-capstone', { jobTitle: currentJobTitle, moduleTitles: modules.map(m => m.title) });
                     updateStepUI(4, 'success');
 
-                    // Step 5: Format Final Output
                     updateStepUI(5, 'loading');
-                    const { curriculum } = await callApi('5-format-output', { jobTitle, fullCurriculum: { ...fullCurriculum, capstone } });
+                    const { curriculum } = await callApi('5-format-output', { jobTitle: currentJobTitle, fullCurriculum: { ...fullCurriculum, capstone } });
                     updateStepUI(5, 'success');
 
-                    // Display final result
-                    resultTitle.textContent = `Learning Path: ${jobTitle}`;
+                    resultTitle.textContent = `Learning Path: ${currentJobTitle}`;
                     syllabusOutput.innerHTML = marked.parse(curriculum);
+                    addFeatureButtons();
                     progressSection.classList.add('hidden');
                     resultSection.classList.remove('hidden');
 
@@ -198,6 +229,50 @@
                     generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 }
             };
+
+            // --- New Feature Functions ---
+            const addFeatureButtons = () => {
+                const listItems = syllabusOutput.querySelectorAll('li');
+                listItems.forEach(li => {
+                    const link = li.querySelector('a');
+                    if (link) {
+                        const button = document.createElement('button');
+                        button.innerHTML = '✨';
+                        button.className = 'elaborate-btn ml-2 text-xs bg-blue-100 text-blue-700 font-semibold py-1 px-2 rounded-full hover:bg-blue-200';
+                        button.title = "Elaborate on this resource";
+                        button.dataset.url = link.href;
+                        button.dataset.title = link.textContent;
+                        li.appendChild(button);
+                    }
+                });
+            };
+
+            const handleElaborateClick = async (event) => {
+                if (!event.target.classList.contains('elaborate-btn')) return;
+
+                const button = event.target;
+                const resourceUrl = button.dataset.url;
+                const resourceTitle = button.dataset.title;
+
+                showModal(`Elaborating on: ${resourceTitle}`, `<div class="flex justify-center p-8"><div class="spinner h-8 w-8"></div></div>`);
+                
+                try {
+                    const { htmlContent } = await callApi('6-elaborate-resource', { resourceUrl, resourceTitle });
+                    modalContent.innerHTML = htmlContent;
+                } catch (error) {
+                    modalContent.innerHTML = `<p class="text-red-600">${error.message}</p>`;
+                }
+            };
+
+            const handleInterviewPrepClick = async () => {
+                showModal(`Interview Prep Kit for ${currentJobTitle}`, `<div class="flex justify-center p-8"><div class="spinner h-8 w-8"></div></div>`);
+                try {
+                    const { htmlContent } = await callApi('7-get-interview-prep', { jobTitle: currentJobTitle, competencies: currentCompetencies });
+                    modalContent.innerHTML = htmlContent;
+                } catch (error) {
+                    modalContent.innerHTML = `<p class="text-red-600">${error.message}</p>`;
+                }
+            };
             
             const copyToClipboard = () => {
                 const textToCopy = syllabusOutput.innerText;
@@ -207,8 +282,12 @@
                 }).catch(err => console.error('Failed to copy text: ', err));
             };
 
+            // --- Event Listeners ---
             generateBtn.addEventListener('click', generateCurriculum);
             copyBtn.addEventListener('click', copyToClipboard);
+            interviewPrepBtn.addEventListener('click', handleInterviewPrepClick);
+            closeModalBtn.addEventListener('click', hideModal);
+            syllabusOutput.addEventListener('click', handleElaborateClick);
         });
     </script>
 </body>

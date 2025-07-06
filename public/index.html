@@ -69,7 +69,6 @@
         </div>
     </div>
 
-    <!-- Modal for Gemini Features -->
     <div id="featureModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay">
         <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div class="sticky top-0 bg-white p-4 border-b border-gray-200 flex justify-between items-center">
@@ -77,8 +76,7 @@
                 <button id="closeModalBtn" class="text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
             </div>
             <div id="modalContent" class="p-6 prose max-w-none">
-                <!-- Content will be injected here -->
-            </div>
+                </div>
         </div>
     </div>
 
@@ -222,41 +220,45 @@
 
                     // THIS IS THE FIX: The Throttled Queue Processor
                     updateStepUI(3, 'loading');
-                    const populatedModules = [];
-                    const resourceTasks = [];
+                    const populatedModules = [...modules].map(m => ({ ...m, resources: [] })); // Initialize with empty resources
+                    const resourceTaskQueue = [];
                     
-                    // Create a queue of all resource-finding tasks
-                    for (const module of modules) {
+                    // Create a queue of all resource-finding tasks we need to run
+                    populatedModules.forEach((module, moduleIndex) => {
                         for (let i = 0; i < 3; i++) { // We want 3 resources per module
-                            resourceTasks.push({ module });
+                            resourceTaskQueue.push({ module, moduleIndex });
                         }
-                    }
+                    });
 
-                    const BATCH_SIZE = 8; // Make 8 requests per minute to be safe
-                    for (let i = 0; i < resourceTasks.length; i += BATCH_SIZE) {
-                        const batch = resourceTasks.slice(i, i + BATCH_SIZE);
-                        const batchPromises = batch.map(task => callApi('3-get-one-resource', task));
+                    const BATCH_SIZE = 9; // Make 9 requests per minute to be safe
+                    for (let i = 0; i < resourceTaskQueue.length; i += BATCH_SIZE) {
+                        const batch = resourceTaskQueue.slice(i, i + BATCH_SIZE);
+                        
+                        const batchPromises = batch.map(task => 
+                            callApi('3-get-one-resource', { module: task.module })
+                                .then(result => ({ ...result, moduleIndex: task.moduleIndex }))
+                        );
                         
                         const results = await Promise.all(batchPromises);
                         
-                        // Process the results of the batch here
-                        // This part is complex, so for now we just log it
-                        console.log("Batch processed:", results);
+                        // Process the results of the batch, adding resources to the correct module
+                        results.forEach(result => {
+                            if (result.resource && result.resource.url) {
+                                // Check for duplicates within the specific module
+                                const moduleToUpdate = populatedModules[result.moduleIndex];
+                                if (!moduleToUpdate.resources.some(r => r.url === result.resource.url)) {
+                                    moduleToUpdate.resources.push(result.resource);
+                                }
+                            }
+                        });
 
-                        // If there are more tasks, wait for 60 seconds before the next batch
-                        if (i + BATCH_SIZE < resourceTasks.length) {
-                            console.log("Rate limit pause: Waiting for 60 seconds...");
-                            await sleep(60000);
+                        // If there are more tasks, wait for 61 seconds before the next batch
+                        if (i + BATCH_SIZE < resourceTaskQueue.length) {
+                            console.log("Rate limit pause: Waiting for 61 seconds...");
+                            await sleep(61000);
                         }
                     }
-                    // This is a simplified placeholder for the resource gathering logic.
-                    // A full implementation would need to correctly map results back to modules.
-                    // For now, we will proceed with empty resources to prove the architecture works.
-                    for (const module of modules) {
-                        populatedModules.push({ ...module, resources: [] });
-                    }
                     updateStepUI(3, 'success');
-
 
                     const fullCurriculum = { modules: populatedModules };
 
@@ -273,7 +275,7 @@
                     // Display final result
                     resultTitle.textContent = `Learning Path: ${currentJobTitle}`;
                     syllabusOutput.innerHTML = marked.parse(curriculum);
-                    // addFeatureButtons(); // Add back when resource logic is complete
+                    addFeatureButtons();
                     progressSection.classList.add('hidden');
                     resultSection.classList.remove('hidden');
 
@@ -286,26 +288,44 @@
                 }
             };
 
-            // --- Feature Functions (can be re-enabled later) ---
-            // const addFeatureButtons = () => { ... };
-            // const handleElaborateClick = async (event) => { ... };
-            // const handleInterviewPrepClick = async () => { ... };
-            
-            const copyToClipboard = () => {
-                const textToCopy = syllabusOutput.innerText;
-                navigator.clipboard.writeText(textToCopy).then(() => {
-                    copyBtn.textContent = 'Copied!';
-                    setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
-                }).catch(err => console.error('Failed to copy text: ', err));
+            // --- New Feature Functions ---
+            const addFeatureButtons = () => {
+                const listItems = syllabusOutput.querySelectorAll('li');
+                listItems.forEach(li => {
+                    const link = li.querySelector('a');
+                    if (link) {
+                        const button = document.createElement('button');
+                        button.innerHTML = '✨';
+                        button.className = 'elaborate-btn ml-2 text-xs bg-blue-100 text-blue-700 font-semibold py-1 px-2 rounded-full hover:bg-blue-200';
+                        button.title = "Elaborate on this resource";
+                        button.dataset.title = link.textContent;
+                        li.appendChild(button);
+                    }
+                });
             };
 
-            // --- Event Listeners ---
-            generateBtn.addEventListener('click', generateCurriculum);
-            copyBtn.addEventListener('click', copyToClipboard);
-            // interviewPrepBtn.addEventListener('click', handleInterviewPrepClick);
-            closeModalBtn.addEventListener('click', hideModal);
-            // syllabusOutput.addEventListener('click', handleElaborateClick);
-        });
-    </script>
-</body>
-</html>
+            const handleElaborateClick = async (event) => {
+                if (!event.target.classList.contains('elaborate-btn')) return;
+                const button = event.target;
+                const resourceTitle = button.dataset.title;
+                showModal(`Elaborating on: ${resourceTitle}`, `<div class="flex justify-center p-8"><div class="spinner h-8 w-8"></div></div>`);
+                try {
+                    const summary = await callApi('6a-get-summary', { resourceTitle });
+                    await sleep(1000);
+                    const takeaways = await callApi('6b-get-takeaways', { resourceTitle });
+                    await sleep(1000);
+                    const exercise = await callApi('6c-get-exercise', { resourceTitle });
+                    const finalHtml = `<h4>Summary</h4>${summary.htmlContent}<h4>Key Takeaways</h4>${takeaways.htmlContent}<h4>Practical Exercise</h4>${exercise.htmlContent}`;
+                    modalContent.innerHTML = finalHtml;
+                } catch (error) { modalContent.innerHTML = `<p class="text-red-600">${error.message}</p>`; }
+            };
+
+            const handleInterviewPrepClick = async () => {
+                showModal(`Interview Prep Kit for ${currentJobTitle}`, `<div class="flex justify-center p-8"><div class="spinner h-8 w-8"></div></div>`);
+                try {
+                    const pitch = await callApi('7a-get-pitch', { jobTitle: currentJobTitle });
+                    await sleep(1000);
+                    const behavioral = await callApi('7b-get-behavioral-q', { jobTitle: currentJobTitle });
+                    await sleep(1000);
+                    const technical = await callApi('7c-get-technical-q', { jobTitle: currentJobTitle, competencies: currentCompetencies });
+                    const finalHtml = `<h2>30-Second Elevator Pitch</h2>${pitch.htmlContent}<h2>Behavioral Questio

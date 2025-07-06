@@ -8,7 +8,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Initialize the model with the search tool and the final system persona
 const model = genAI.getGenerativeModel({
-  model: 'gemini-1.5-flash-lite-preview-0627',
+  model: 'gemini-2.5-flash',
   // This gives the model the ability to perform live web searches.
   tools: [new GoogleSearch({ apiKey: process.env.GOOGLE_API_KEY })],
 });

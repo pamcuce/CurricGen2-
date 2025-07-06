@@ -69,6 +69,7 @@
         </div>
     </div>
 
+    <!-- Modal for Gemini Features -->
     <div id="featureModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay">
         <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div class="sticky top-0 bg-white p-4 border-b border-gray-200 flex justify-between items-center">
@@ -76,7 +77,8 @@
                 <button id="closeModalBtn" class="text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
             </div>
             <div id="modalContent" class="p-6 prose max-w-none">
-                </div>
+                <!-- Content will be injected here -->
+            </div>
         </div>
     </div>
 
@@ -152,18 +154,35 @@
 
             const hideModal = () => featureModal.classList.add('hidden');
             
-            // --- API Call Function ---
+            // --- API Call Function (with Robust Error Handling) ---
             const callApi = async (endpoint, body) => {
                 const response = await fetch(`/.netlify/functions/${endpoint}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body),
                 });
+
+                const responseText = await response.text();
+
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || `Step ${endpoint} failed.`);
+                    try {
+                        const errorJson = JSON.parse(responseText);
+                        throw new Error(errorJson.error || `API Error at ${endpoint}`);
+                    } catch (e) {
+                        throw new Error(responseText || `API Error at ${endpoint} with status ${response.status}`);
+                    }
                 }
-                return response.json();
+                
+                if (!responseText) {
+                    throw new Error(`The server returned an empty response from ${endpoint}.`);
+                }
+
+                try {
+                    return JSON.parse(responseText);
+                } catch (e) {
+                    console.error("Failed to parse successful response as JSON:", responseText);
+                    throw new Error(`The server returned an invalid response from ${endpoint}.`);
+                }
             };
             
             // --- Main Application Logic ---
@@ -197,13 +216,13 @@
                     }
                     updateStepUI(2, 'success');
 
-                    // Step 3: The "Repeating Loop" for resources
+                    // Step 3: Get Resources for each module
                     updateStepUI(3, 'loading');
                     const populatedModules = [];
                     for (const module of modules) {
                         const resources = [];
                         let attempts = 0;
-                        while(resources.length < 3 && attempts < 5) { // Try 5 times to find 3 unique resources
+                        while(resources.length < 3 && attempts < 5) {
                             const { resource } = await callApi('3-get-one-resource', { module });
                             if (resource && resource.url && !resources.some(r => r.url === resource.url)) {
                                 resources.push(resource);
@@ -260,29 +279,16 @@
 
             const handleElaborateClick = async (event) => {
                 if (!event.target.classList.contains('elaborate-btn')) return;
-
                 const button = event.target;
                 const resourceTitle = button.dataset.title;
-
                 showModal(`Elaborating on: ${resourceTitle}`, `<div class="flex justify-center p-8"><div class="spinner h-8 w-8"></div></div>`);
-                
                 try {
                     const summary = await callApi('6a-get-summary', { resourceTitle });
                     const takeaways = await callApi('6b-get-takeaways', { resourceTitle });
                     const exercise = await callApi('6c-get-exercise', { resourceTitle });
-
-                    const finalHtml = `
-                        <h4>Summary</h4>
-                        ${summary.htmlContent}
-                        <h4>Key Takeaways</h4>
-                        ${takeaways.htmlContent}
-                        <h4>Practical Exercise</h4>
-                        ${exercise.htmlContent}
-                    `;
+                    const finalHtml = `<h4>Summary</h4>${summary.htmlContent}<h4>Key Takeaways</h4>${takeaways.htmlContent}<h4>Practical Exercise</h4>${exercise.htmlContent}`;
                     modalContent.innerHTML = finalHtml;
-                } catch (error) {
-                    modalContent.innerHTML = `<p class="text-red-600">${error.message}</p>`;
-                }
+                } catch (error) { modalContent.innerHTML = `<p class="text-red-600">${error.message}</p>`; }
             };
 
             const handleInterviewPrepClick = async () => {
@@ -291,19 +297,9 @@
                     const pitch = await callApi('7a-get-pitch', { jobTitle: currentJobTitle });
                     const behavioral = await callApi('7b-get-behavioral-q', { jobTitle: currentJobTitle });
                     const technical = await callApi('7c-get-technical-q', { jobTitle: currentJobTitle, competencies: currentCompetencies });
-
-                    const finalHtml = `
-                        <h2>30-Second Elevator Pitch</h2>
-                        ${pitch.htmlContent}
-                        <h2>Behavioral Questions</h2>
-                        ${behavioral.htmlContent}
-                        <h2>Technical Questions</h2>
-                        ${technical.htmlContent}
-                    `;
+                    const finalHtml = `<h2>30-Second Elevator Pitch</h2>${pitch.htmlContent}<h2>Behavioral Questions</h2>${behavioral.htmlContent}<h2>Technical Questions</h2>${technical.htmlContent}`;
                     modalContent.innerHTML = finalHtml;
-                } catch (error) {
-                    modalContent.innerHTML = `<p class="text-red-600">${error.message}</p>`;
-                }
+                } catch (error) { modalContent.innerHTML = `<p class="text-red-600">${error.message}</p>`; }
             };
             
             const copyToClipboard = () => {

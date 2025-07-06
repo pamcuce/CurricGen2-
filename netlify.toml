@@ -5,8 +5,5 @@
 [build.environment]
   NODE_VERSION = "18"
 
-# THIS IS THE FIX:
-# This gives your functions more memory and CPU power,
-# which dramatically reduces "cold start" times and prevents timeouts.
 [functions]
   memory = 2048

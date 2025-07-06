@@ -1,42 +1,16 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { GoogleSearch } = GoogleGenerativeAI;
+// THIS IS THE CORRECT WAY TO IMPORT THE SEARCH TOOL
+const { GoogleSearch } = require('@google/generative-ai/server');
 
 // --- AI INITIALIZATION ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// The model is initialized with the gemini-1.5-pro model and the search tool configuration.
+// THIS IS THE MODERN, SIMPLER, AND CORRECT WAY TO INITIALIZE THE MODEL WITH THE TOOL
 const model = genAI.getGenerativeModel({
-  model: 'gemini-2.5-flash-lite-preview-06-17',
-  tools: [{
-    function_declarations: [
-      {
-        name: "search_the_web",
-        description: "Search the web using google search",
-        parameters: {
-          type: "object",
-          properties: {
-            query: {
-              type: "string",
-              description: "The query to run against google search",
-            },
-          },
-          required: ["query"],
-        },
-      },
-    ],
-    tool_code: googleSearchToolCode,
-  }],
+  model: 'gemini-2.5-flash',
+  tools: [new GoogleSearch({ apiKey: process.env.GOOGLE_API_KEY })],
 });
 
-// Define the tool code for Google Search
-async function googleSearchToolCode(tool_input) {
-  const googleSearch = new GoogleSearch({
-    apiKey: process.env.GEMINI_API_KEY,
-    cx: process.env.SEARCH_ENGINE_ID,
-  });
-  const result = await googleSearch.search(tool_input);
-  return result;
-}
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -49,6 +23,7 @@ exports.handler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: 'Job title is required.' }) };
     }
 
+    // Your excellent prompt does not need to be changed.
     const prompt = `
       You are an expert career counselor and curriculum designer. A user wants to train to become a "${jobTitle}".
 

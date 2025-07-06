@@ -1,11 +1,13 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-// THIS IS THE CORRECT WAY TO IMPORT THE SEARCH TOOL
+// THIS IS THE CORRECT WAY TO IMPORT THE SEARCH TOOL FOR A NODE.JS ENVIRONMENT
 const { GoogleSearch } = require('@google/generative-ai/server');
 
 // --- AI INITIALIZATION ---
+// Your API keys must be set in the Netlify dashboard
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // THIS IS THE MODERN, SIMPLER, AND CORRECT WAY TO INITIALIZE THE MODEL WITH THE TOOL
+// It requires a Google API Key with the "Custom Search API" enabled.
 const model = genAI.getGenerativeModel({
   model: 'gemini-2.5-flash',
   tools: [new GoogleSearch({ apiKey: process.env.GOOGLE_API_KEY })],
@@ -13,6 +15,7 @@ const model = genAI.getGenerativeModel({
 
 
 exports.handler = async (event) => {
+  // Only allow POST requests
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
@@ -23,7 +26,7 @@ exports.handler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: 'Job title is required.' }) };
     }
 
-    // Your excellent prompt does not need to be changed.
+    // This prompt is well-designed and does not need to be changed.
     const prompt = `
       You are an expert career counselor and curriculum designer. A user wants to train to become a "${jobTitle}".
 
@@ -57,7 +60,7 @@ exports.handler = async (event) => {
     console.error('Error generating curriculum:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Failed to generate curriculum.' }),
+      body: JSON.stringify({ error: `Failed to generate curriculum: ${error.message}` }),
     };
   }
 };

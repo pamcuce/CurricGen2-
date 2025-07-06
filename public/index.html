@@ -199,16 +199,12 @@
                     }
                     updateStepUI(2, 'success');
 
-                    // Step 3: Get Resources for each module
+                    // Step 3: Get Resources for each module (sequentially to avoid overloading)
                     updateStepUI(3, 'loading');
                     const populatedModules = [];
                     for (const module of modules) {
-                        const resources = [];
-                        for (let i = 0; i < 3; i++) { // Get 3 resources per module
-                            const { resource } = await callApi('3-get-one-resource', { module, existingResources: resources });
-                            resources.push(resource);
-                        }
-                        populatedModules.push({ ...module, resources });
+                        const resourcesData = await callApi('3-get-resources', { module });
+                        populatedModules.push({ ...module, resources: resourcesData.resources });
                     }
                     updateStepUI(3, 'success');
 

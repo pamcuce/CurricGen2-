@@ -35,7 +35,7 @@ const searchTheWeb = {
       })) || [];
       
       console.log(`[Search Tool] Found ${searchResults.length} results.`);
-      return { results: searchResults };
+      return { results: searchResults.slice(0, 5) }; // Return top 5 results
     } catch (error) {
       console.error("[Search Tool] Error:", error);
       return { error: "Failed to fetch search results." };
@@ -94,29 +94,29 @@ exports.handler = async (event) => {
 
     const chat = model.startChat();
     let result = await chat.sendMessage(prompt);
-    let response = result.response;
-
-    // This loop handles the function calling process.
-    while (response.functionCalls) {
-      const calls = response.functionCalls;
-      const tool_responses = [];
-
-      for (const call of calls) {
-        if (call.name === 'search_the_web') {
-          const tool_response = await searchTheWeb.function(call.args);
-          tool_responses.push({
-            name: call.name,
-            response: tool_response,
-          });
-        }
-      }
+    
+    // THIS IS THE FIX: This loop now correctly handles both single and multiple function calls.
+    while (result.response.functionCalls && result.response.functionCalls.length > 0) {
+      const calls = result.response.functionCalls;
+      
+      // Use Promise.all to run tool calls in parallel for efficiency
+      const tool_responses = await Promise.all(
+        calls.map(async (call) => {
+          if (call.name === 'search_the_web') {
+            const tool_response = await searchTheWeb.function(call.args);
+            return {
+              name: call.name,
+              response: tool_response,
+            };
+          }
+        })
+      );
       
       // Send the tool's response back to the model
-      result = await chat.sendMessage(JSON.stringify(tool_responses));
-      response = result.response;
+      result = await chat.sendMessage(JSON.stringify(tool_responses.filter(Boolean)));
     }
 
-    const curriculumMarkdown = response.text();
+    const curriculumMarkdown = result.response.text();
 
     return {
       statusCode: 200,

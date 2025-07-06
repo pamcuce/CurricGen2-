@@ -170,6 +170,8 @@
                     updateStepUI(3, 'loading');
                     
                     resultTitle.textContent = `Learning Path: ${jobTitle}`;
+                    // Your simple parser is good, but for full markdown support, a library is great.
+                    // This will render links, lists, and headers correctly from the agent's output.
                     syllabusOutput.innerHTML = parseAndRenderMarkdown(syllabusMarkdown);
 
                     await new Promise(resolve => setTimeout(resolve, 500)); // Small delay for visual effect

@@ -47,9 +47,11 @@
         <div id="progressSection" class="hidden bg-white p-6 rounded-xl shadow-lg mb-8">
             <h2 class="text-xl font-semibold text-center mb-6">Generating your curriculum...</h2>
             <div class="space-y-4">
-                <div id="step1" class="flex items-center space-x-4 p-3 bg-gray-100 rounded-lg"><div id="step1_icon" class="step-icon h-8 w-8 rounded-full flex items-center justify-center bg-gray-300 text-gray-600"></div><p id="step1_text" class="step-text text-gray-600 font-medium">Analyzing required skills for the role</p></div>
-                <div id="step2" class="flex items-center space-x-4 p-3 bg-gray-100 rounded-lg"><div id="step2_icon" class="step-icon h-8 w-8 rounded-full flex items-center justify-center bg-gray-300 text-gray-600"></div><p id="step2_text" class="step-text text-gray-600 font-medium">Structuring the learning path</p></div>
-                <div id="step3" class="flex items-center space-x-4 p-3 bg-gray-100 rounded-lg"><div id="step3_icon" class="step-icon h-8 w-8 rounded-full flex items-center justify-center bg-gray-300 text-gray-600"></div><p id="step3_text" class="step-text text-gray-600 font-medium">Curating resources and building the syllabus</p></div>
+                <div id="step1" class="flex items-center space-x-4 p-3 bg-gray-100 rounded-lg"><div id="step1_icon" class="step-icon h-8 w-8 rounded-full flex items-center justify-center bg-gray-300 text-gray-600"></div><p id="step1_text" class="step-text text-gray-600 font-medium">Step 1: Analyzing required skills for the role</p></div>
+                <div id="step2" class="flex items-center space-x-4 p-3 bg-gray-100 rounded-lg"><div id="step2_icon" class="step-icon h-8 w-8 rounded-full flex items-center justify-center bg-gray-300 text-gray-600"></div><p id="step2_text" class="step-text text-gray-600 font-medium">Step 2: Structuring the learning path</p></div>
+                <div id="step3" class="flex items-center space-x-4 p-3 bg-gray-100 rounded-lg"><div id="step3_icon" class="step-icon h-8 w-8 rounded-full flex items-center justify-center bg-gray-300 text-gray-600"></div><p id="step3_text" class="step-text text-gray-600 font-medium">Step 3: Curating resources for each module</p></div>
+                <div id="step4" class="flex items-center space-x-4 p-3 bg-gray-100 rounded-lg"><div id="step4_icon" class="step-icon h-8 w-8 rounded-full flex items-center justify-center bg-gray-300 text-gray-600"></div><p id="step4_text" class="step-text text-gray-600 font-medium">Step 4: Designing capstone project</p></div>
+                <div id="step5" class="flex items-center space-x-4 p-3 bg-gray-100 rounded-lg"><div id="step5_icon" class="step-icon h-8 w-8 rounded-full flex items-center justify-center bg-gray-300 text-gray-600"></div><p id="step5_text" class="step-text text-gray-600 font-medium">Step 5: Formatting final curriculum</p></div>
             </div>
         </div>
 
@@ -62,7 +64,6 @@
         </div>
     </div>
 
-    <!-- We will use the 'marked' library to convert Markdown to HTML -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -79,7 +80,9 @@
             const steps = {
                 1: { icon: document.getElementById('step1_icon'), text: document.getElementById('step1_text') },
                 2: { icon: document.getElementById('step2_icon'), text: document.getElementById('step2_text') },
-                3: { icon: document.getElementById('step3_icon'), text: document.getElementById('step3_text') }
+                3: { icon: document.getElementById('step3_icon'), text: document.getElementById('step3_text') },
+                4: { icon: document.getElementById('step4_icon'), text: document.getElementById('step4_text') },
+                5: { icon: document.getElementById('step5_icon'), text: document.getElementById('step5_text') },
             };
 
             const spinnerSVG = `<div class="spinner h-5 w-5 rounded-full border-2 border-transparent"></div>`;
@@ -113,48 +116,20 @@
             };
 
             const hideError = () => errorBox.classList.add('hidden');
-            
-            // THIS IS THE FIX: A robust stream parser.
-            const handleStream = async (response) => {
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
 
-                while (true) {
-                    const { value, done } = await reader.read();
-                    if (done) break;
-
-                    buffer += decoder.decode(value, { stream: true });
-                    
-                    // Process any complete messages in the buffer
-                    let boundary = buffer.indexOf('\n\n');
-                    while (boundary !== -1) {
-                        const message = buffer.substring(0, boundary);
-                        buffer = buffer.substring(boundary + 2);
-
-                        if (message.startsWith('data: ')) {
-                            const jsonString = message.substring(6);
-                            try {
-                                const event = JSON.parse(jsonString);
-                                if (event.type === 'progress') {
-                                    updateStepUI(event.step, event.status);
-                                } else if (event.type === 'final') {
-                                    resultTitle.textContent = `Learning Path: ${jobTitleInput.value.trim()}`;
-                                    // Use marked.js for proper markdown rendering
-                                    syllabusOutput.innerHTML = marked.parse(event.curriculum);
-                                    resultSection.classList.remove('hidden');
-                                } else if (event.type === 'error') {
-                                    throw new Error(event.message);
-                                }
-                            } catch (e) {
-                                console.error("Failed to parse stream chunk:", jsonString, e);
-                            }
-                        }
-                        boundary = buffer.indexOf('\n\n');
-                    }
+            const callApi = async (endpoint, body) => {
+                const response = await fetch(`/.netlify/functions/${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `Step ${endpoint} failed.`);
                 }
+                return response.json();
             };
-
+            
             const generateCurriculum = async () => {
                 const jobTitle = jobTitleInput.value.trim();
                 if (!jobTitle) {
@@ -170,18 +145,44 @@
                 generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
 
                 try {
-                    const response = await fetch('/.netlify/functions/generateCurriculum', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ jobTitle: jobTitle })
-                    });
+                    // Step 1: Get Competencies
+                    updateStepUI(1, 'loading');
+                    const { competencies } = await callApi('1-get-competencies', { jobTitle });
+                    updateStepUI(1, 'success');
 
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(errorText || 'The server responded with an error.');
-                    }
-                    
-                    await handleStream(response);
+                    // Step 2: Get Structure
+                    updateStepUI(2, 'loading');
+                    const { modules } = await callApi('2-get-structure', { jobTitle, competencies });
+                    updateStepUI(2, 'success');
+
+                    // Step 3: Get Resources for each module
+                    updateStepUI(3, 'loading');
+                    const populatedModules = await Promise.all(
+                        modules.map(module => callApi('3-get-resources', { module }))
+                    );
+                    const modulesWithResources = modules.map((module, index) => ({
+                        ...module,
+                        resources: populatedModules[index].resources
+                    }));
+                    updateStepUI(3, 'success');
+
+                    const fullCurriculum = { modules: modulesWithResources };
+
+                    // Step 4: Get Capstone
+                    updateStepUI(4, 'loading');
+                    const capstone = await callApi('4-get-capstone', { jobTitle, moduleTitles: modules.map(m => m.title) });
+                    updateStepUI(4, 'success');
+
+                    // Step 5: Format Final Output
+                    updateStepUI(5, 'loading');
+                    const { curriculum } = await callApi('5-format-output', { jobTitle, fullCurriculum: { ...fullCurriculum, capstone } });
+                    updateStepUI(5, 'success');
+
+                    // Display final result
+                    resultTitle.textContent = `Learning Path: ${jobTitle}`;
+                    syllabusOutput.innerHTML = marked.parse(curriculum);
+                    progressSection.classList.add('hidden');
+                    resultSection.classList.remove('hidden');
 
                 } catch (error) {
                     console.error(error);
@@ -189,15 +190,10 @@
                 } finally {
                     generateBtn.disabled = false;
                     generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    // Hide progress if no result was shown (e.g., on error)
-                    if (resultSection.classList.contains('hidden')) {
-                         progressSection.classList.add('hidden');
-                    }
                 }
             };
             
             const copyToClipboard = () => {
-                // Use the raw markdown for copying if available, otherwise innerText
                 const textToCopy = syllabusOutput.innerText;
                 navigator.clipboard.writeText(textToCopy).then(() => {
                     copyBtn.textContent = 'Copied!';

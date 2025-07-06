@@ -5,5 +5,7 @@
 [build.environment]
   NODE_VERSION = "18"
 
-[functions]
+# This is the correct syntax to apply a setting to all functions.
+# It gives them more memory and CPU power to prevent timeouts.
+[functions."*"]
   memory = 2048

@@ -6,7 +6,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // The model is initialized with the gemini-1.5-pro model and the search tool configuration.
 const model = genAI.getGenerativeModel({
-  model: 'gemini-2.0-flash',
+  model: 'gemini-1.5-pro',
   tools: [{
     function_declarations: [
       {

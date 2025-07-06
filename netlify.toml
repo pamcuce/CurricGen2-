@@ -1,6 +1,8 @@
 [build]
   publish = "public"
 
+# This tells Netlify to use the new edge function at the /generate-curriculum path.
+# It completely ignores the old /functions directory.
 [[edge_functions]]
   path = "/generate-curriculum"
   function = "generate-curriculum"

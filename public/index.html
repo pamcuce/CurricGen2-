@@ -49,11 +49,11 @@
         <div id="progressSection" class="hidden bg-white p-6 rounded-xl shadow-lg mb-8">
             <h2 class="text-xl font-semibold text-center mb-6">Generating your curriculum...</h2>
             <div class="space-y-4">
-                <div id="step1" class="flex items-center space-x-4 p-3 bg-gray-100 rounded-lg"><div id="step1_icon" class="step-icon h-8 w-8 rounded-full flex items-center justify-center bg-gray-300 text-gray-600"></div><p id="step1_text" class="step-text text-gray-600 font-medium">Step 1: Initializing Agent...</p></div>
-                <div id="step2" class="flex items-center space-x-4 p-3 bg-gray-100 rounded-lg"><div id="step2_icon" class="step-icon h-8 w-8 rounded-full flex items-center justify-center bg-gray-300 text-gray-600"></div><p id="step2_text" class="step-text text-gray-600 font-medium">Step 2: ...</p></div>
-                <div id="step3" class="flex items-center space-x-4 p-3 bg-gray-100 rounded-lg"><div id="step3_icon" class="step-icon h-8 w-8 rounded-full flex items-center justify-center bg-gray-300 text-gray-600"></div><p id="step3_text" class="step-text text-gray-600 font-medium">Step 3: ...</p></div>
-                <div id="step4" class="flex items-center space-x-4 p-3 bg-gray-100 rounded-lg"><div id="step4_icon" class="step-icon h-8 w-8 rounded-full flex items-center justify-center bg-gray-300 text-gray-600"></div><p id="step4_text" class="step-text text-gray-600 font-medium">Step 4: ...</p></div>
-                <div id="step5" class="flex items-center space-x-4 p-3 bg-gray-100 rounded-lg"><div id="step5_icon" class="step-icon h-8 w-8 rounded-full flex items-center justify-center bg-gray-300 text-gray-600"></div><p id="step5_text" class="step-text text-gray-600 font-medium">Step 5: ...</p></div>
+                <div id="step1" class="flex items-center space-x-4 p-3 bg-gray-100 rounded-lg"><div id="step1_icon" class="step-icon h-8 w-8 rounded-full flex items-center justify-center bg-gray-300 text-gray-600"></div><p id="step1_text" class="step-text text-gray-600 font-medium">Step 1: Analyzing required skills for the role</p></div>
+                <div id="step2" class="flex items-center space-x-4 p-3 bg-gray-100 rounded-lg"><div id="step2_icon" class="step-icon h-8 w-8 rounded-full flex items-center justify-center bg-gray-300 text-gray-600"></div><p id="step2_text" class="step-text text-gray-600 font-medium">Step 2: Structuring the learning path</p></div>
+                <div id="step3" class="flex items-center space-x-4 p-3 bg-gray-100 rounded-lg"><div id="step3_icon" class="step-icon h-8 w-8 rounded-full flex items-center justify-center bg-gray-300 text-gray-600"></div><p id="step3_text" class="step-text text-gray-600 font-medium">Step 3: Curating resources for each module</p></div>
+                <div id="step4" class="flex items-center space-x-4 p-3 bg-gray-100 rounded-lg"><div id="step4_icon" class="step-icon h-8 w-8 rounded-full flex items-center justify-center bg-gray-300 text-gray-600"></div><p id="step4_text" class="step-text text-gray-600 font-medium">Step 4: Designing capstone project</p></div>
+                <div id="step5" class="flex items-center space-x-4 p-3 bg-gray-100 rounded-lg"><div id="step5_icon" class="step-icon h-8 w-8 rounded-full flex items-center justify-center bg-gray-300 text-gray-600"></div><p id="step5_text" class="step-text text-gray-600 font-medium">Step 5: Formatting final curriculum</p></div>
             </div>
         </div>
 
@@ -117,25 +117,24 @@
             const checkSVG = `<svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>`;
             
             // --- UI Functions ---
-            const updateStepUI = (stepNumber, status, text) => {
+            const updateStepUI = (stepNumber, status) => {
                 const step = steps[stepNumber];
                 if (!step) return;
-                if (text) step.text.textContent = `Step ${stepNumber}: ${text}`;
-                step.icon.classList.remove('bg-gray-300', 'bg-blue-100', 'bg-green-500', 'text-white');
-                step.text.classList.remove('text-gray-600', 'text-blue-700', 'text-green-700', 'font-semibold');
+                const { icon, text } = step;
+                icon.classList.remove('bg-gray-300', 'bg-blue-100', 'bg-green-500', 'text-white');
+                text.classList.remove('text-gray-600', 'text-blue-700', 'text-green-700', 'font-semibold');
                 if (status === 'loading') {
-                    step.icon.innerHTML = spinnerSVG;
-                    step.icon.classList.add('bg-blue-100');
-                    step.text.classList.add('text-blue-700', 'font-semibold');
-                } else if (status === 'complete') {
-                    step.icon.innerHTML = checkSVG;
-                    step.icon.classList.add('bg-green-500', 'text-white');
-                    step.text.classList.add('text-green-700');
+                    icon.innerHTML = spinnerSVG;
+                    icon.classList.add('bg-blue-100');
+                    text.classList.add('text-blue-700', 'font-semibold');
+                } else if (status === 'success') {
+                    icon.innerHTML = checkSVG;
+                    icon.classList.add('bg-green-500', 'text-white');
+                    text.classList.add('text-green-700');
                 } else if (status === 'reset') {
-                    step.icon.innerHTML = '';
-                    step.icon.classList.add('bg-gray-300');
-                    step.text.classList.add('text-gray-600');
-                    step.text.textContent = `Step ${stepNumber}: ...`;
+                    icon.innerHTML = '';
+                    icon.classList.add('bg-gray-300');
+                    text.classList.add('text-gray-600');
                 }
             };
 
@@ -155,6 +154,40 @@
 
             const hideModal = () => featureModal.classList.add('hidden');
             
+            // --- Utility Function ---
+            const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+            // --- API Call Function ---
+            const callApi = async (endpoint, body) => {
+                const response = await fetch(`/.netlify/functions/${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+
+                const responseText = await response.text();
+
+                if (!response.ok) {
+                    try {
+                        const errorJson = JSON.parse(responseText);
+                        throw new Error(errorJson.error || `API Error at ${endpoint}`);
+                    } catch (e) {
+                        throw new Error(responseText || `API Error at ${endpoint} with status ${response.status}`);
+                    }
+                }
+                
+                if (!responseText) {
+                    throw new Error(`The server returned an empty response from ${endpoint}.`);
+                }
+
+                try {
+                    return JSON.parse(responseText);
+                } catch (e) {
+                    console.error("Failed to parse successful response as JSON:", responseText);
+                    throw new Error(`The server returned an invalid response from ${endpoint}.`);
+                }
+            };
+            
             // --- Main Application Logic ---
             const generateCurriculum = async () => {
                 currentJobTitle = jobTitleInput.value.trim();
@@ -165,60 +198,66 @@
 
                 hideError();
                 resultSection.classList.add('hidden');
-                Object.values(steps).forEach((step, i) => updateStepUI(i + 1, 'reset'));
+                Object.keys(steps).forEach(key => updateStepUI(key, 'reset'));
                 progressSection.classList.remove('hidden');
                 generateBtn.disabled = true;
                 generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
 
                 try {
-                    const response = await fetch('/.netlify/functions/generate-curriculum', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ jobTitle: currentJobTitle }),
-                    });
+                    // Step 1: Get Competencies
+                    updateStepUI(1, 'loading');
+                    const competenciesData = await callApi('1-get-competencies', { jobTitle: currentJobTitle });
+                    currentCompetencies = competenciesData.competencies;
+                    updateStepUI(1, 'success');
 
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(errorText || 'The server responded with an error.');
+                    // Step 2: Get Structure
+                    updateStepUI(2, 'loading');
+                    const modules = [];
+                    for (const competency of currentCompetencies) {
+                        await sleep(1000); // Small delay
+                        const moduleData = await callApi('2-get-module-structure', { jobTitle: currentJobTitle, competency });
+                        modules.push(moduleData);
                     }
+                    updateStepUI(2, 'success');
 
-                    const reader = response.body.getReader();
-                    const decoder = new TextDecoder();
-                    let buffer = '';
-
-                    while (true) {
-                        const { value, done } = await reader.read();
-                        if (done) break;
-
-                        buffer += decoder.decode(value, { stream: true });
-                        let boundary = buffer.indexOf('\n\n');
-                        while (boundary !== -1) {
-                            const message = buffer.substring(0, boundary);
-                            buffer = buffer.substring(boundary + 2);
-                            if (message.startsWith('data: ')) {
-                                const jsonString = message.substring(6);
-                                try {
-                                    const event = JSON.parse(jsonString);
-
-                                    if (event.type === 'progress') {
-                                        updateStepUI(event.step, event.status, event.text);
-                                    } else if (event.type === 'final') {
-                                        currentCompetencies = event.competencies;
-                                        resultTitle.textContent = `Learning Path: ${currentJobTitle}`;
-                                        syllabusOutput.innerHTML = marked.parse(event.curriculum);
-                                        // addFeatureButtons(); // This can be added back if needed
-                                        progressSection.classList.add('hidden');
-                                        resultSection.classList.remove('hidden');
-                                    } else if (event.type === 'error') {
-                                        throw new Error(event.message);
-                                    }
-                                } catch (e) {
-                                    console.error("Failed to parse stream chunk:", jsonString, e);
-                                }
+                    // Step 3: Get Resources for each module
+                    updateStepUI(3, 'loading');
+                    const populatedModules = [];
+                    for (const module of modules) {
+                        const resources = [];
+                        let attempts = 0;
+                        while(resources.length < 3 && attempts < 5) {
+                            // THIS IS THE FIX: A 6.5-second delay to stay under the 10 requests/minute limit
+                            await sleep(6500); 
+                            const { resource } = await callApi('3-get-one-resource', { module });
+                            if (resource && resource.url && !resources.some(r => r.url === resource.url)) {
+                                resources.push(resource);
                             }
-                            boundary = buffer.indexOf('\n\n');
+                            attempts++;
                         }
+                        populatedModules.push({ ...module, resources });
                     }
+                    updateStepUI(3, 'success');
+
+                    const fullCurriculum = { modules: populatedModules };
+
+                    // Step 4: Get Capstone
+                    updateStepUI(4, 'loading');
+                    const capstone = await callApi('4-get-capstone', { jobTitle: currentJobTitle, moduleTitles: modules.map(m => m.title) });
+                    updateStepUI(4, 'success');
+
+                    // Step 5: Format Final Output
+                    updateStepUI(5, 'loading');
+                    const { curriculum } = await callApi('5-format-output', { jobTitle: currentJobTitle, fullCurriculum: { ...fullCurriculum, capstone } });
+                    updateStepUI(5, 'success');
+
+                    // Display final result
+                    resultTitle.textContent = `Learning Path: ${currentJobTitle}`;
+                    syllabusOutput.innerHTML = marked.parse(curriculum);
+                    addFeatureButtons();
+                    progressSection.classList.add('hidden');
+                    resultSection.classList.remove('hidden');
+
                 } catch (error) {
                     console.error(error);
                     showError(error.message || "An unknown error occurred. Please try again.");
@@ -227,11 +266,66 @@
                     generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 }
             };
-            
-            // Event listeners can be added back if the feature buttons are re-enabled
-            generateBtn.addEventListener('click', generateCurriculum);
-            closeModalBtn.addEventListener('click', hideModal);
 
+            // --- New Feature Functions ---
+            const addFeatureButtons = () => {
+                const listItems = syllabusOutput.querySelectorAll('li');
+                listItems.forEach(li => {
+                    const link = li.querySelector('a');
+                    if (link) {
+                        const button = document.createElement('button');
+                        button.innerHTML = '✨';
+                        button.className = 'elaborate-btn ml-2 text-xs bg-blue-100 text-blue-700 font-semibold py-1 px-2 rounded-full hover:bg-blue-200';
+                        button.title = "Elaborate on this resource";
+                        button.dataset.title = link.textContent;
+                        li.appendChild(button);
+                    }
+                });
+            };
+
+            const handleElaborateClick = async (event) => {
+                if (!event.target.classList.contains('elaborate-btn')) return;
+                const button = event.target;
+                const resourceTitle = button.dataset.title;
+                showModal(`Elaborating on: ${resourceTitle}`, `<div class="flex justify-center p-8"><div class="spinner h-8 w-8"></div></div>`);
+                try {
+                    const summary = await callApi('6a-get-summary', { resourceTitle });
+                    await sleep(1000);
+                    const takeaways = await callApi('6b-get-takeaways', { resourceTitle });
+                    await sleep(1000);
+                    const exercise = await callApi('6c-get-exercise', { resourceTitle });
+                    const finalHtml = `<h4>Summary</h4>${summary.htmlContent}<h4>Key Takeaways</h4>${takeaways.htmlContent}<h4>Practical Exercise</h4>${exercise.htmlContent}`;
+                    modalContent.innerHTML = finalHtml;
+                } catch (error) { modalContent.innerHTML = `<p class="text-red-600">${error.message}</p>`; }
+            };
+
+            const handleInterviewPrepClick = async () => {
+                showModal(`Interview Prep Kit for ${currentJobTitle}`, `<div class="flex justify-center p-8"><div class="spinner h-8 w-8"></div></div>`);
+                try {
+                    const pitch = await callApi('7a-get-pitch', { jobTitle: currentJobTitle });
+                    await sleep(1000);
+                    const behavioral = await callApi('7b-get-behavioral-q', { jobTitle: currentJobTitle });
+                    await sleep(1000);
+                    const technical = await callApi('7c-get-technical-q', { jobTitle: currentJobTitle, competencies: currentCompetencies });
+                    const finalHtml = `<h2>30-Second Elevator Pitch</h2>${pitch.htmlContent}<h2>Behavioral Questions</h2>${behavioral.htmlContent}<h2>Technical Questions</h2>${technical.htmlContent}`;
+                    modalContent.innerHTML = finalHtml;
+                } catch (error) { modalContent.innerHTML = `<p class="text-red-600">${error.message}</p>`; }
+            };
+            
+            const copyToClipboard = () => {
+                const textToCopy = syllabusOutput.innerText;
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+                }).catch(err => console.error('Failed to copy text: ', err));
+            };
+
+            // --- Event Listeners ---
+            generateBtn.addEventListener('click', generateCurriculum);
+            copyBtn.addEventListener('click', copyToClipboard);
+            interviewPrepBtn.addEventListener('click', handleInterviewPrepClick);
+            closeModalBtn.addEventListener('click', hideModal);
+            syllabusOutput.addEventListener('click', handleElaborateClick);
         });
     </script>
 </body>

@@ -11,3 +11,8 @@
 [build.environment]
   # Sets the required Node.js version for the Google AI SDK.
   NODE_VERSION = "18"
+
+# Function-specific settings
+[functions]
+  # Increase the timeout for all functions to 30 seconds.
+  timeout = 30

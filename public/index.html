@@ -240,7 +240,6 @@
                         button.innerHTML = '✨';
                         button.className = 'elaborate-btn ml-2 text-xs bg-blue-100 text-blue-700 font-semibold py-1 px-2 rounded-full hover:bg-blue-200';
                         button.title = "Elaborate on this resource";
-                        button.dataset.url = link.href;
                         button.dataset.title = link.textContent;
                         li.appendChild(button);
                     }
@@ -251,14 +250,24 @@
                 if (!event.target.classList.contains('elaborate-btn')) return;
 
                 const button = event.target;
-                const resourceUrl = button.dataset.url;
                 const resourceTitle = button.dataset.title;
 
                 showModal(`Elaborating on: ${resourceTitle}`, `<div class="flex justify-center p-8"><div class="spinner h-8 w-8"></div></div>`);
                 
                 try {
-                    const { htmlContent } = await callApi('6-elaborate-resource', { resourceUrl, resourceTitle });
-                    modalContent.innerHTML = htmlContent;
+                    const summary = await callApi('6a-get-summary', { resourceTitle });
+                    const takeaways = await callApi('6b-get-takeaways', { resourceTitle });
+                    const exercise = await callApi('6c-get-exercise', { resourceTitle });
+
+                    const finalHtml = `
+                        <h4>Summary</h4>
+                        ${summary.htmlContent}
+                        <h4>Key Takeaways</h4>
+                        ${takeaways.htmlContent}
+                        <h4>Practical Exercise</h4>
+                        ${exercise.htmlContent}
+                    `;
+                    modalContent.innerHTML = finalHtml;
                 } catch (error) {
                     modalContent.innerHTML = `<p class="text-red-600">${error.message}</p>`;
                 }
@@ -267,8 +276,19 @@
             const handleInterviewPrepClick = async () => {
                 showModal(`Interview Prep Kit for ${currentJobTitle}`, `<div class="flex justify-center p-8"><div class="spinner h-8 w-8"></div></div>`);
                 try {
-                    const { htmlContent } = await callApi('7-get-interview-prep', { jobTitle: currentJobTitle, competencies: currentCompetencies });
-                    modalContent.innerHTML = htmlContent;
+                    const pitch = await callApi('7a-get-pitch', { jobTitle: currentJobTitle });
+                    const behavioral = await callApi('7b-get-behavioral-q', { jobTitle: currentJobTitle });
+                    const technical = await callApi('7c-get-technical-q', { jobTitle: currentJobTitle, competencies: currentCompetencies });
+
+                    const finalHtml = `
+                        <h2>30-Second Elevator Pitch</h2>
+                        ${pitch.htmlContent}
+                        <h2>Behavioral Questions</h2>
+                        ${behavioral.htmlContent}
+                        <h2>Technical Questions</h2>
+                        ${technical.htmlContent}
+                    `;
+                    modalContent.innerHTML = finalHtml;
                 } catch (error) {
                     modalContent.innerHTML = `<p class="text-red-600">${error.message}</p>`;
                 }

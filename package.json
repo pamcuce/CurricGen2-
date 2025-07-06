@@ -1,8 +1,10 @@
+
 {
   "name": "ai-curriculum-agent-final",
   "version": "1.0.0",
   "description": "A curriculum generator using a Gemini agent on Netlify.",
   "dependencies": {
-    "@google/generative-ai": "^0.24.1"
+    "@google/generative-ai": "^0.24.1",
+    "@netlify/functions": "^2.0.0"
   }
 }

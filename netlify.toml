@@ -9,3 +9,9 @@
 [build.environment]
   # Sets the required Node.js version for the Google AI SDK.
   NODE_VERSION = "18"
+
+# THIS IS THE FIX:
+# This plugin tells Netlify to automatically install dependencies
+# found in package.json files inside your function folders.
+[[plugins]]
+  package = "@netlify/plugin-functions-install-core"

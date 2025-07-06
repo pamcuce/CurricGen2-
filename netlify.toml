@@ -1,0 +1,7 @@
+# This tells Netlify that your main page (index.html) is in the root.
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "18"

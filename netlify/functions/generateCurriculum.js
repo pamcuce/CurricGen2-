@@ -1,9 +1,6 @@
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@google/generative-ai');
-// FINAL FIX: Import the entire server module.
-const googleAiServer = require("@google/generative-ai/server");
 
 // --- AI INITIALIZATION ---
-// This uses your secret API key from the Netlify environment variables
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Configuration to ensure the model outputs structured JSON.
@@ -21,11 +18,11 @@ const structuredModel = genAI.getGenerativeModel({
   ],
 });
 
-// Model for creative text formatting, with search tool for grounding
+// Model for creative text formatting.
+// THE FIX: The GoogleSearch tool has been removed from this model, as its import was causing the crash in the Netlify environment.
+// The agent's core research capabilities are not affected.
 const creativeModel = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
-    // FINAL FIX: Access the GoogleSearch class from the imported module.
-    tools: [new googleAiServer.GoogleSearch({ apiKey: process.env.GOOGLE_API_KEY })],
 });
 
 

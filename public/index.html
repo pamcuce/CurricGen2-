@@ -69,6 +69,7 @@
         </div>
     </div>
 
+    <!-- Modal for Gemini Features -->
     <div id="featureModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay">
         <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div class="sticky top-0 bg-white p-4 border-b border-gray-200 flex justify-between items-center">
@@ -76,7 +77,8 @@
                 <button id="closeModalBtn" class="text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
             </div>
             <div id="modalContent" class="p-6 prose max-w-none">
-                </div>
+                <!-- Content will be injected here -->
+            </div>
         </div>
     </div>
 
@@ -218,45 +220,22 @@
                     }
                     updateStepUI(2, 'success');
 
-                    // THIS IS THE FIX: The Throttled Queue Processor
+                    // Step 3: Get Resources for each module with proper rate limiting
                     updateStepUI(3, 'loading');
-                    const populatedModules = [...modules].map(m => ({ ...m, resources: [] })); // Initialize with empty resources
-                    const resourceTaskQueue = [];
-                    
-                    // Create a queue of all resource-finding tasks we need to run
-                    populatedModules.forEach((module, moduleIndex) => {
-                        for (let i = 0; i < 3; i++) { // We want 3 resources per module
-                            resourceTaskQueue.push({ module, moduleIndex });
-                        }
-                    });
-
-                    const BATCH_SIZE = 9; // Make 9 requests per minute to be safe
-                    for (let i = 0; i < resourceTaskQueue.length; i += BATCH_SIZE) {
-                        const batch = resourceTaskQueue.slice(i, i + BATCH_SIZE);
-                        
-                        const batchPromises = batch.map(task => 
-                            callApi('3-get-one-resource', { module: task.module })
-                                .then(result => ({ ...result, moduleIndex: task.moduleIndex }))
-                        );
-                        
-                        const results = await Promise.all(batchPromises);
-                        
-                        // Process the results of the batch, adding resources to the correct module
-                        results.forEach(result => {
-                            if (result.resource && result.resource.url) {
-                                // Check for duplicates within the specific module
-                                const moduleToUpdate = populatedModules[result.moduleIndex];
-                                if (!moduleToUpdate.resources.some(r => r.url === result.resource.url)) {
-                                    moduleToUpdate.resources.push(result.resource);
-                                }
+                    const populatedModules = [];
+                    for (const module of modules) {
+                        const resources = [];
+                        let attempts = 0;
+                        while(resources.length < 3 && attempts < 5) {
+                            // THIS IS THE FIX: A 6.5-second delay to stay under the 10 requests/minute limit
+                            await sleep(6500); 
+                            const { resource } = await callApi('3-get-one-resource', { module });
+                            if (resource && resource.url && !resources.some(r => r.url === resource.url)) {
+                                resources.push(resource);
                             }
-                        });
-
-                        // If there are more tasks, wait for 61 seconds before the next batch
-                        if (i + BATCH_SIZE < resourceTaskQueue.length) {
-                            console.log("Rate limit pause: Waiting for 61 seconds...");
-                            await sleep(61000);
+                            attempts++;
                         }
+                        populatedModules.push({ ...module, resources });
                     }
                     updateStepUI(3, 'success');
 
@@ -328,4 +307,26 @@
                     const behavioral = await callApi('7b-get-behavioral-q', { jobTitle: currentJobTitle });
                     await sleep(1000);
                     const technical = await callApi('7c-get-technical-q', { jobTitle: currentJobTitle, competencies: currentCompetencies });
-                    const finalHtml = `<h2>30-Second Elevator Pitch</h2>${pitch.htmlContent}<h2>Behavioral Questio
+                    const finalHtml = `<h2>30-Second Elevator Pitch</h2>${pitch.htmlContent}<h2>Behavioral Questions</h2>${behavioral.htmlContent}<h2>Technical Questions</h2>${technical.htmlContent}`;
+                    modalContent.innerHTML = finalHtml;
+                } catch (error) { modalContent.innerHTML = `<p class="text-red-600">${error.message}</p>`; }
+            };
+            
+            const copyToClipboard = () => {
+                const textToCopy = syllabusOutput.innerText;
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+                }).catch(err => console.error('Failed to copy text: ', err));
+            };
+
+            // --- Event Listeners ---
+            generateBtn.addEventListener('click', generateCurriculum);
+            copyBtn.addEventListener('click', copyToClipboard);
+            interviewPrepBtn.addEventListener('click', handleInterviewPrepClick);
+            closeModalBtn.addEventListener('click', hideModal);
+            syllabusOutput.addEventListener('click', handleElaborateClick);
+        });
+    </script>
+</body>
+</html>

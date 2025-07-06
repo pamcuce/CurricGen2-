@@ -1,15 +1,7 @@
 {
-  "name": "try2",
+  "name": "ai-curriculum-agent-final",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "description": "A curriculum generator using a Gemini agent on Netlify.",
   "dependencies": {
     "@google/generative-ai": "^0.24.1"
   }

@@ -21,7 +21,7 @@ const creativeModel = genAI.getGenerativeModel({
 });
 
 // ==============================================================================
-//  AGENTIC WORKFLOW STEPS
+//  AGENTIC WORKFLOW STEPS (No changes here)
 // ==============================================================================
 
 async function researchCoreCompetencies(jobTitle) {
@@ -60,65 +60,72 @@ async function formatFinalOutput(curriculumData, jobTitle) {
 }
 
 // ==============================================================================
-//  MAIN NETLIFY HANDLER (Streaming)
+//  MAIN NETLIFY HANDLER (FINAL, CORRECTED STREAMING IMPLEMENTATION)
 // ==============================================================================
-exports.handler = (event, context, callback) => {
+exports.handler = async (event) => {
     if (event.httpMethod !== 'POST') {
-        return callback(null, { statusCode: 405, body: 'Method Not Allowed' });
+        return { statusCode: 405, body: 'Method Not Allowed' };
     }
 
     const { jobTitle } = JSON.parse(event.body);
     if (!jobTitle) {
-        return callback(null, { statusCode: 400, body: JSON.stringify({ error: 'Job title is required.' }) });
+        return { statusCode: 400, body: JSON.stringify({ error: 'Job title is required.' }) };
     }
 
-    const stream = require('stream');
-    const responseStream = new stream.PassThrough();
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+        async start(controller) {
+            const writeEvent = (type, data) => {
+                const message = `data: ${JSON.stringify({ type, ...data })}\n\n`;
+                controller.enqueue(encoder.encode(message));
+            };
 
-    callback(null, {
-        isBase64Encoded: false,
-        statusCode: 200,
-        headers: {
-            'Content-Type': 'text/plain; charset=utf-8',
+            try {
+                // STEP 1
+                writeEvent('progress', { step: 1, status: 'loading' });
+                const { competencies } = await researchCoreCompetencies(jobTitle);
+                writeEvent('progress', { step: 1, status: 'complete' });
+
+                // STEP 2
+                writeEvent('progress', { step: 2, status: 'loading' });
+                const curriculumSkeleton = await designCurriculumStructure(competencies, jobTitle);
+                writeEvent('progress', { step: 2, status: 'complete' });
+
+                // STEP 3
+                writeEvent('progress', { step: 3, status: 'loading' });
+                const populatedModules = await Promise.all(
+                    curriculumSkeleton.modules.map(module => findResourcesForModule(module, jobTitle))
+                );
+                const fullCurriculum = { ...curriculumSkeleton, modules: populatedModules };
+                
+                // STEP 4
+                const capstoneProject = await designCapstoneProject(fullCurriculum, jobTitle);
+                
+                // STEP 5
+                const finalCurriculumData = { ...fullCurriculum, capstone: capstoneProject };
+                const curriculumMarkdown = await formatFinalOutput(finalCurriculumData, jobTitle);
+                
+                // Send the final result
+                writeEvent('final', { curriculum: curriculumMarkdown });
+                writeEvent('progress', { step: 3, status: 'complete' });
+
+            } catch (error) {
+                console.error('Agent error:', error);
+                writeEvent('error', { message: `An error occurred in the agent: ${error.message}` });
+            } finally {
+                // Close the stream
+                controller.close();
+            }
         },
-        body: responseStream,
     });
 
-    const writeEvent = (type, data) => {
-        responseStream.write(`data: ${JSON.stringify({ type, ...data })}\n\n`);
+    return {
+        statusCode: 200,
+        headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+        },
+        body: stream,
     };
-
-    const runAgent = async () => {
-        try {
-            writeEvent('progress', { step: 1, status: 'loading' });
-            const { competencies } = await researchCoreCompetencies(jobTitle);
-            writeEvent('progress', { step: 1, status: 'complete' });
-
-            writeEvent('progress', { step: 2, status: 'loading' });
-            const curriculumSkeleton = await designCurriculumStructure(competencies, jobTitle);
-            writeEvent('progress', { step: 2, status: 'complete' });
-
-            writeEvent('progress', { step: 3, status: 'loading' });
-            const populatedModules = await Promise.all(
-                curriculumSkeleton.modules.map(module => findResourcesForModule(module, jobTitle))
-            );
-            const fullCurriculum = { ...curriculumSkeleton, modules: populatedModules };
-            
-            const capstoneProject = await designCapstoneProject(fullCurriculum, jobTitle);
-            
-            const finalCurriculumData = { ...fullCurriculum, capstone: capstoneProject };
-            const curriculumMarkdown = await formatFinalOutput(finalCurriculumData, jobTitle);
-            writeEvent('final', { curriculum: curriculumMarkdown });
-            
-            writeEvent('progress', { step: 3, status: 'complete' });
-
-        } catch (error) {
-            console.error('Agent error:', error);
-            writeEvent('error', { message: `An error occurred in the agent: ${error.message}` });
-        } finally {
-            responseStream.end();
-        }
-    };
-
-    runAgent();
 };

@@ -1,6 +1,6 @@
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@google/generative-ai');
-// CORRECTED IMPORT: Import GoogleSearch at the top level.
-const { GoogleSearch } = require("@google/generative-ai/server");
+// FINAL FIX: Import the entire server module.
+const googleAiServer = require("@google/generative-ai/server");
 
 // --- AI INITIALIZATION ---
 // This uses your secret API key from the Netlify environment variables
@@ -24,8 +24,8 @@ const structuredModel = genAI.getGenerativeModel({
 // Model for creative text formatting, with search tool for grounding
 const creativeModel = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
-    // CORRECTED USAGE: Use the imported GoogleSearch class directly.
-    tools: [new GoogleSearch({ apiKey: process.env.GOOGLE_API_KEY })],
+    // FINAL FIX: Access the GoogleSearch class from the imported module.
+    tools: [new googleAiServer.GoogleSearch({ apiKey: process.env.GOOGLE_API_KEY })],
 });
 
 

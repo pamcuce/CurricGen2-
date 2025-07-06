@@ -214,7 +214,7 @@
                     updateStepUI(2, 'loading');
                     const modules = [];
                     for (const competency of currentCompetencies) {
-                        await sleep(1000); // Small delay between competency calls
+                        await sleep(1000); // Small delay
                         const moduleData = await callApi('2-get-module-structure', { jobTitle: currentJobTitle, competency });
                         modules.push(moduleData);
                     }
@@ -227,8 +227,8 @@
                         const resources = [];
                         let attempts = 0;
                         while(resources.length < 3 && attempts < 5) {
-                            // THIS IS THE FIX: A much longer delay to respect the 10 requests/minute limit
-                            await sleep(6500); // 6.5 seconds between each resource request
+                            // THIS IS THE FIX: A 6.5-second delay to stay under the 10 requests/minute limit
+                            await sleep(6500); 
                             const { resource } = await callApi('3-get-one-resource', { module });
                             if (resource && resource.url && !resources.some(r => r.url === resource.url)) {
                                 resources.push(resource);

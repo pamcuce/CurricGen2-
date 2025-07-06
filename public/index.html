@@ -25,6 +25,7 @@
 </head>
 <body class="bg-gray-50 text-gray-800">
     <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
+        <!-- Your header and input form HTML remains the same -->
         <header class="text-center mb-8">
             <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">Dynamic AI Curriculum Generator</h1>
             <p class="mt-2 text-md sm:text-lg text-gray-600">Enter any job title to generate a personalized learning path using real-time job market data.</p>
@@ -62,6 +63,9 @@
         </div>
     </div>
 
+    <!-- ============================================================================== -->
+    <!--  UPDATED JAVASCRIPT WITH ROBUST ERROR HANDLING                             -->
+    <!-- ============================================================================== -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const jobTitleInput = document.getElementById('jobTitleInput');
@@ -75,9 +79,9 @@
             const copyBtn = document.getElementById('copyBtn');
 
             const steps = {
-                1: { el: document.getElementById('step1'), icon: document.getElementById('step1_icon'), text: document.getElementById('step1_text') },
-                2: { el: document.getElementById('step2'), icon: document.getElementById('step2_icon'), text: document.getElementById('step2_text') },
-                3: { el: document.getElementById('step3'), icon: document.getElementById('step3_icon'), text: document.getElementById('step3_text') }
+                1: { icon: document.getElementById('step1_icon'), text: document.getElementById('step1_text') },
+                2: { icon: document.getElementById('step2_icon'), text: document.getElementById('step2_text') },
+                3: { icon: document.getElementById('step3_icon'), text: document.getElementById('step3_text') }
             };
 
             const spinnerSVG = `<div class="spinner h-5 w-5 rounded-full border-2 border-transparent"></div>`;
@@ -107,31 +111,56 @@
             const showError = (message) => {
                 errorMessage.textContent = message;
                 errorBox.classList.remove('hidden');
+                progressSection.classList.add('hidden');
             };
 
-            const hideError = () => {
-                errorBox.classList.add('hidden');
-            };
+            const hideError = () => errorBox.classList.add('hidden');
             
             const parseAndRenderMarkdown = (markdownText) => {
-                // This is a simple parser. For complex markdown, a library like 'marked' or 'showdown' would be better.
                 let html = markdownText
                     .replace(/^### (.*$)/gim, '<h3>$1</h3>')
                     .replace(/^## (.*$)/gim, '<h2>$1</h2>')
                     .replace(/^# (.*$)/gim, '<h1>$1</h1>')
                     .replace(/^\* (.*$)/gim, '<ul><li>$1</li></ul>')
-                    .replace(/<\/ul>\n<ul>/gim, '') // Fix for consecutive list items
+                    .replace(/<\/ul>\n<ul>/gim, '')
                     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">$1</a>')
                     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                     .replace(/\n/g, '<br>');
                 
-                // Cleanup extra line breaks around lists
-                html = html.replace(/<br><ul>/g, '<ul>');
-                html = html.replace(/<\/ul><br>/g, '</ul>');
-                html = html.replace(/<\/li><br>/g, '</li>');
+                html = html.replace(/<br><ul>/g, '<ul>').replace(/<\/ul><br>/g, '</ul>').replace(/<\/li><br>/g, '</li>');
                 return html;
             };
             
+            const handleStream = async (reader, decoder) => {
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n\n').filter(line => line.startsWith('data: '));
+
+                    for (const line of lines) {
+                        const jsonString = line.replace('data: ', '');
+                        try {
+                            const event = JSON.parse(jsonString);
+                            if (event.type === 'progress') {
+                                updateStepUI(event.step, event.status);
+                            } else if (event.type === 'final') {
+                                resultTitle.textContent = `Learning Path: ${jobTitleInput.value.trim()}`;
+                                syllabusOutput.innerHTML = parseAndRenderMarkdown(event.curriculum);
+                                resultSection.classList.remove('hidden');
+                            } else if (event.type === 'error') {
+                                throw new Error(event.message);
+                            }
+                        } catch (e) {
+                            console.error("Failed to parse stream chunk:", jsonString, e);
+                            // This catch block handles malformed JSON from the stream
+                            throw new Error("Received a malformed data event from the server.");
+                        }
+                    }
+                }
+            };
+
             const generateCurriculum = async () => {
                 const jobTitle = jobTitleInput.value.trim();
                 if (!jobTitle) {
@@ -147,46 +176,33 @@
                 generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
 
                 try {
-                    updateStepUI(1, 'loading');
-                    
                     const response = await fetch('/.netlify/functions/generateCurriculum', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ jobTitle: jobTitle })
                     });
 
+                    // THIS IS THE FIX:
+                    // If the response is not ok, we read the body as plain text
+                    // which is safe and won't cause a JSON parsing error.
                     if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || 'The server responded with an error.');
+                        const errorText = await response.text();
+                        throw new Error(errorText || 'The server responded with an error.');
                     }
                     
-                    updateStepUI(1, 'success');
-                    updateStepUI(2, 'loading');
-
-                    const data = await response.json();
-                    const syllabusMarkdown = data.curriculum;
-                    
-                    updateStepUI(2, 'success');
-                    updateStepUI(3, 'loading');
-                    
-                    resultTitle.textContent = `Learning Path: ${jobTitle}`;
-                    // Your simple parser is good, but for full markdown support, a library is great.
-                    // This will render links, lists, and headers correctly from the agent's output.
-                    syllabusOutput.innerHTML = parseAndRenderMarkdown(syllabusMarkdown);
-
-                    await new Promise(resolve => setTimeout(resolve, 500)); // Small delay for visual effect
-                    updateStepUI(3, 'success');
-                    
-                    progressSection.classList.add('hidden');
-                    resultSection.classList.remove('hidden');
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    await handleStream(reader, decoder);
 
                 } catch (error) {
                     console.error(error);
                     showError(error.message || "An unknown error occurred. Please try again.");
-                    progressSection.classList.add('hidden');
                 } finally {
                     generateBtn.disabled = false;
                     generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    if (resultSection.classList.contains('hidden')) {
+                         progressSection.classList.add('hidden');
+                    }
                 }
             };
             
@@ -195,9 +211,7 @@
                 navigator.clipboard.writeText(textToCopy).then(() => {
                     copyBtn.textContent = 'Copied!';
                     setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
-                }).catch(err => {
-                    console.error('Failed to copy text: ', err);
-                });
+                }).catch(err => console.error('Failed to copy text: ', err));
             };
 
             generateBtn.addEventListener('click', generateCurriculum);

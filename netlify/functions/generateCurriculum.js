@@ -1,14 +1,17 @@
+
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-// This line was likely duplicated. It should only appear once.
-const { GoogleSearch } = require("@google/generative-ai/server");
 
 // --- AI INITIALIZATION ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// Initialize the model with a valid model name and the search tool.
+// Initialize the model with the search tool enabled via toolConfig.
 const model = genAI.getGenerativeModel({
   model: 'gemini-2.5-flash-lite-preview-06-17',
-  tools: [new GoogleSearch({ apiKey: process.env.GOOGLE_API_KEY })],
+  toolConfig: {
+    googleSearch: {
+      // No parameters are needed here to enable the tool.
+    },
+  },
 });
 
 // The main function that Netlify runs when your frontend calls it.

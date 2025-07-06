@@ -1,3 +1,4 @@
+const { stream } = require('@netlify/functions');
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@google/generative-ai');
 
 // --- AI INITIALIZATION ---
@@ -21,7 +22,7 @@ const creativeModel = genAI.getGenerativeModel({
 });
 
 // ==============================================================================
-//  AGENTIC WORKFLOW STEPS (No changes here)
+//  AGENTIC WORKFLOW STEPS (These do not change)
 // ==============================================================================
 
 async function researchCoreCompetencies(jobTitle) {
@@ -60,20 +61,13 @@ async function formatFinalOutput(curriculumData, jobTitle) {
 }
 
 // ==============================================================================
-//  MAIN NETLIFY HANDLER (FINAL, CORRECTED STREAMING IMPLEMENTATION)
+//  MAIN NETLIFY HANDLER (Using the official Netlify 'stream' wrapper)
 // ==============================================================================
-exports.handler = async (event) => {
-    if (event.httpMethod !== 'POST') {
-        return { statusCode: 405, body: 'Method Not Allowed' };
-    }
-
+exports.handler = stream(async (event) => {
     const { jobTitle } = JSON.parse(event.body);
-    if (!jobTitle) {
-        return { statusCode: 400, body: JSON.stringify({ error: 'Job title is required.' }) };
-    }
 
     const encoder = new TextEncoder();
-    const stream = new ReadableStream({
+    const readable = new ReadableStream({
         async start(controller) {
             const writeEvent = (type, data) => {
                 const message = `data: ${JSON.stringify({ type, ...data })}\n\n`;
@@ -105,7 +99,6 @@ exports.handler = async (event) => {
                 const finalCurriculumData = { ...fullCurriculum, capstone: capstoneProject };
                 const curriculumMarkdown = await formatFinalOutput(finalCurriculumData, jobTitle);
                 
-                // Send the final result
                 writeEvent('final', { curriculum: curriculumMarkdown });
                 writeEvent('progress', { step: 3, status: 'complete' });
 
@@ -113,19 +106,18 @@ exports.handler = async (event) => {
                 console.error('Agent error:', error);
                 writeEvent('error', { message: `An error occurred in the agent: ${error.message}` });
             } finally {
-                // Close the stream
                 controller.close();
             }
         },
     });
 
     return {
-        statusCode: 200,
         headers: {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
         },
-        body: stream,
+        body: readable,
+        statusCode: 200,
     };
-};
+});
